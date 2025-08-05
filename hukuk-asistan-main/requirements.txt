@@ -5,3 +5,4 @@ loguru
 httpx  # n8n'e asenkron HTTP isteği yapmak için
 python-dotenv
 jinja2
+google-generativeai  # Google Gemini AI

@@ -8,7 +8,14 @@ from loguru import logger
 from contextlib import asynccontextmanager
 
 from .config import settings
-from .schemas import AnalysisRequest, AnalysisResponse, N8NResultRequest
+from .schemas import (
+    AnalysisRequest, AnalysisResponse, N8NResultRequest,
+    KeywordExtractionRequest, KeywordExtractionResponse,
+    DecisionAnalysisRequest, DecisionAnalysisResponse,
+    PetitionGenerationRequest, PetitionGenerationResponse,
+    SmartSearchRequest, SmartSearchResponse
+)
+from .ai_service import gemini_service
 
 # --- Loglama ---
 logger.remove()
@@ -201,3 +208,142 @@ async def get_analysis_status(transaction_id: uuid.UUID):
     
     logger.info(f"Transaction {transaction_id} durumu sorgulandı: {result['status']}")
     return result
+
+# --- AI Özellikleri Endpoints ---
+
+@app.post("/api/v1/ai/extract-keywords", response_model=KeywordExtractionResponse)
+async def extract_keywords(request: KeywordExtractionRequest):
+    """
+    Olay metninden hukuki anahtar kelimeleri çıkarır
+    """
+    try:
+        keywords = await gemini_service.extract_keywords_from_case(request.case_text)
+        return KeywordExtractionResponse(
+            keywords=keywords,
+            success=True,
+            message=f"{len(keywords)} anahtar kelime başarıyla çıkarıldı"
+        )
+    except Exception as e:
+        logger.error(f"Anahtar kelime çıkarma hatası: {e}")
+        return KeywordExtractionResponse(
+            keywords=[],
+            success=False,
+            message=f"Hata: {str(e)}"
+        )
+
+@app.post("/api/v1/ai/analyze-decision", response_model=DecisionAnalysisResponse)
+async def analyze_decision(request: DecisionAnalysisRequest):
+    """
+    Bir Yargıtay kararının olay metniyle ilişkisini analiz eder
+    """
+    try:
+        analysis = await gemini_service.analyze_decision_relevance(
+            request.case_text, 
+            request.decision_text
+        )
+        return DecisionAnalysisResponse(
+            score=analysis["score"],
+            explanation=analysis["explanation"],
+            similarity=analysis["similarity"],
+            success=True
+        )
+    except Exception as e:
+        logger.error(f"Karar analizi hatası: {e}")
+        return DecisionAnalysisResponse(
+            score=0,
+            explanation=f"Analiz hatası: {str(e)}",
+            similarity="Belirlenemedi",
+            success=False
+        )
+
+@app.post("/api/v1/ai/generate-petition", response_model=PetitionGenerationResponse)
+async def generate_petition(request: PetitionGenerationRequest):
+    """
+    Olay metni ve alakalı kararlardan dilekçe şablonu oluşturur
+    """
+    try:
+        petition = await gemini_service.generate_petition_template(
+            request.case_text,
+            request.relevant_decisions
+        )
+        return PetitionGenerationResponse(
+            petition_template=petition,
+            success=True,
+            message="Dilekçe şablonu başarıyla oluşturuldu"
+        )
+    except Exception as e:
+        logger.error(f"Dilekçe oluşturma hatası: {e}")
+        return PetitionGenerationResponse(
+            petition_template="Dilekçe şablonu oluşturulamadı",
+            success=False,
+            message=f"Hata: {str(e)}"
+        )
+
+@app.post("/api/v1/ai/smart-search", response_model=SmartSearchResponse)
+async def smart_search(request: SmartSearchRequest):
+    """
+    Akıllı arama: Olay metninden anahtar kelime çıkarır, 
+    Yargıtay'da arar ve sonuçları puanlar
+    """
+    try:
+        # 1. Anahtar kelimeleri çıkar
+        keywords = await gemini_service.extract_keywords_from_case(request.case_text)
+        
+        # 2. Yargıtay scraper API'sini çağır
+        client: httpx.AsyncClient = request.app.state.http_client
+        search_payload = {"keywords": keywords}
+        
+        # Yargıtay scraper API endpoint'i (docker-compose'daki servis adı)
+        scraper_url = "http://yargitay-scraper-api:8001/search"
+        
+        response = await client.post(scraper_url, json=search_payload)
+        
+        if response.status_code == 200:
+            search_data = response.json()
+            search_results = search_data.get("results", [])
+            
+            # 3. Her sonucu AI ile analiz et ve puanla
+            analyzed_results = []
+            for result in search_results[:request.max_results]:
+                analysis = await gemini_service.analyze_decision_relevance(
+                    request.case_text,
+                    result.get("content", "")
+                )
+                
+                analyzed_result = {
+                    **result,
+                    "ai_score": analysis["score"],
+                    "ai_explanation": analysis["explanation"],
+                    "ai_similarity": analysis["similarity"]
+                }
+                analyzed_results.append(analyzed_result)
+            
+            # Puanına göre sırala (yüksekten düşüğe)
+            analyzed_results.sort(key=lambda x: x.get("ai_score", 0), reverse=True)
+            
+            return SmartSearchResponse(
+                keywords=keywords,
+                search_results=search_results,
+                analyzed_results=analyzed_results,
+                success=True,
+                message=f"{len(analyzed_results)} sonuç AI ile analiz edildi"
+            )
+        else:
+            return SmartSearchResponse(
+                keywords=keywords,
+                search_results=[],
+                analyzed_results=[],
+                success=False,
+                message="Yargıtay arama servisi hatası"
+            )
+            
+    except Exception as e:
+        logger.error(f"Akıllı arama hatası: {e}")
+        return SmartSearchResponse(
+            keywords=[],
+            search_results=[],
+            analyzed_results=[],
+            success=False,
+            message=f"Hata: {str(e)}"
+        )
+

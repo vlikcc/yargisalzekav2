@@ -7,6 +7,9 @@ class Settings(BaseSettings):
     N8N_WEBHOOK_URL: str
     N8N_AUTH_SECRET: str
     
+    # Google Gemini AI ayarları
+    GEMINI_API_KEY: str
+    
     LOG_LEVEL: str = "INFO"
 
 settings = Settings()
