@@ -130,3 +130,26 @@ logs/
 # Temporary files
 tmp/
 temp/ 
+# Node.js
+node_modules/
+*/node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.npm
+.yarn-integrity
+.pnpm-debug.log
+
+# Build outputs
+dist/
+build/
+*/dist/
+*/build/
+
+# Frontend specific
+.next
+.nuxt
+.cache/
+.parcel-cache
+
