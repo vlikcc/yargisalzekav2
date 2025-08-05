@@ -7,12 +7,12 @@ services:
       context: ./hukuk-asistan-main
     ports:
       - "8000:8000"
-    # volumes:
-    #   - ./hukuk-asistan-main/app:/code/app
     env_file:
       - .env
     depends_on:
       - scraper-api
+    environment:
+      - SCRAPER_API_URL=http://scraper-api:8001
 
   # Scraper API (İşçi)
   scraper-api:
@@ -20,26 +20,10 @@ services:
       context: ./yargitay-scraper-api
     ports:
       - "8001:8001"
-    # volumes:
-    #   - ./yargitay-scraper-api/app:/code/app
-    #   - ./yargitay-scraper-api/logs:/code/logs
     env_file:
       - .env
     depends_on:
       - selenium-hub
-
-  # n8n Servisi
-  n8n:
-    image: n8nio/n8n
-    ports:
-      - "5678:5678"
-    volumes:
-      - n8n_data:/home/node/.n8n
-    environment:
-      - TZ=Europe/Istanbul
-    depends_on:
-      - main-api
-      - scraper-api
 
   # Selenium Servisleri
   selenium-hub:
@@ -61,8 +45,3 @@ services:
     ports:
       - "7900:7900"  # VNC web interface
     shm_size: '2g'
-
-# Ana seviyedeki "volumes" tanımı
-# mongo_data kaldırıldı
-volumes:
-  n8n_data:

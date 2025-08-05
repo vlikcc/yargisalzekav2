@@ -1,19 +1,7 @@
 from pydantic import BaseModel
 from typing import List, Dict, Any, Optional
-import uuid
 
-class AnalysisRequest(BaseModel):
-    user_case_description: str
-
-class AnalysisResponse(BaseModel):
-    message: str
-    transaction_id: uuid.UUID
-
-class N8NResultRequest(BaseModel):
-    transaction_id: uuid.UUID
-    analysis_result: str
-
-# AI Özellikleri için yeni schema'lar
+# AI Özellikleri için schema'lar
 class KeywordExtractionRequest(BaseModel):
     case_text: str
 
@@ -49,5 +37,20 @@ class SmartSearchResponse(BaseModel):
     keywords: List[str]
     search_results: List[Dict[str, Any]]
     analyzed_results: List[Dict[str, Any]]  # Puanlanmış sonuçlar
+    success: bool
+    message: str
+
+# Workflow mikroservisleri için yeni schema'lar
+class WorkflowAnalysisRequest(BaseModel):
+    case_text: str
+    max_results: Optional[int] = 10
+    include_petition: Optional[bool] = False
+
+class WorkflowAnalysisResponse(BaseModel):
+    keywords: List[str]
+    search_results: List[Dict[str, Any]]
+    analyzed_results: List[Dict[str, Any]]
+    petition_template: Optional[str] = None
+    processing_time: float
     success: bool
     message: str

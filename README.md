@@ -1,90 +1,176 @@
-# Yargısal Zeka API
+# 🏛️ Yargısal Zeka - Yapay Zeka Destekli Yargıtay Kararı Arama Platformu
 
-Bu proje, hukuki veri analizi ve yargı kararları için yapay zeka destekli API'ler içermektedir.
+## 📋 Proje Hakkında
 
-## Proje Yapısı
+Yargısal Zeka, avukatların ve hukuk profesyonellerinin Yargıtay kararlarını hızlı ve etkili bir şekilde bulmasını sağlayan yapay zeka destekli bir platformdur.
+
+### 🚀 Ana Özellikler
+
+- **🤖 AI Destekli Anahtar Kelime Çıkarma**: Google Gemini AI ile olay metninizden otomatik anahtar kelime çıkarma
+- **⚡ Paralel Arama Teknolojisi**: Çoklu anahtar kelimelerle eş zamanlı arama
+- **🎯 Akıllı Puanlama Sistemi**: AI ile kararları olay metninizle ilişkisine göre puanlama
+- **📝 Otomatik Dilekçe Şablonu**: En alakalı kararlardan dilekçe şablonu oluşturma
+- **🔄 Mikroservis Mimarisi**: Ölçeklenebilir ve modüler yapı
+
+## 🏗️ Sistem Mimarisi
 
 ```
-yargısalzeka-api/
-├── docker-compose.yml
-├── hukuk-asistan-main/          # Hukuk asistanı uygulaması
-│   ├── app/
-│   │   ├── main.py
-│   │   ├── config.py
-│   │   ├── schemas.py
-│   │   └── templates/
-│   ├── Dockerfile
-│   └── requirements.txt
-├── yargitay-scraper-api/        # Yargıtay veri çekme API'si
-│   ├── app/
-│   │   ├── main.py
-│   │   ├── config.py
-│   │   ├── crud.py
-│   │   ├── database.py
-│   │   ├── models.py
-│   │   ├── schemas.py
-│   │   └── search_logic.py
-│   ├── Dockerfile
-│   ├── logs/
-│   └── requirements.txt
-└── My workflow.json
+┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
+│   React         │    │   FastAPI       │    │   Scraper API   │
+│   Frontend      │◄──►│   Main API      │◄──►│   (Selenium)    │
+│                 │    │                 │    │                 │
+└─────────────────┘    └─────────────────┘    └─────────────────┘
+                                │
+                                ▼
+                       ┌─────────────────┐
+                       │   Google        │
+                       │   Gemini AI     │
+                       └─────────────────┘
 ```
 
-## Özellikler
+## 🛠️ Teknoloji Stack'i
 
-### Hukuk Asistanı (hukuk-asistan-main)
-- Hukuki sorulara yanıt verme
-- Yargı kararları analizi
-- Web arayüzü
+### Backend
+- **FastAPI**: Modern, hızlı web framework
+- **Google Gemini AI**: Doğal dil işleme ve analiz
+- **Selenium**: Web scraping için
+- **Pydantic**: Veri validasyonu
+- **Loguru**: Gelişmiş loglama
 
-### Yargıtay Scraper API (yargitay-scraper-api)
-- Yargıtay kararlarını çekme
-- Veritabanı entegrasyonu
-- Arama ve filtreleme özellikleri
+### Frontend
+- **React**: Modern UI framework
+- **Vite**: Hızlı build tool
+- **Tailwind CSS**: Utility-first CSS framework
+- **Shadcn/ui**: Modern UI bileşenleri
 
-## Kurulum
+### DevOps
+- **Docker**: Containerization
+- **Docker Compose**: Multi-container orchestration
 
-### Docker ile Çalıştırma
+## 🚀 Hızlı Başlangıç
 
+### Ön Gereksinimler
+- Docker ve Docker Compose
+- Google Gemini AI API Key
+
+### 1. Projeyi Klonlayın
 ```bash
-# Tüm servisleri başlat
-docker-compose up -d
-
-# Servisleri durdur
-docker-compose down
+git clone https://github.com/vlikcc/yargisalzeka.git
+cd yargisalzeka
 ```
 
-### Manuel Kurulum
+### 2. Environment Variables Ayarlayın
+```bash
+cp .env.example .env
+# .env dosyasını düzenleyin ve GEMINI_API_KEY'i ekleyin
+```
 
-#### Hukuk Asistanı
+### 3. Servisleri Başlatın
+```bash
+docker-compose up -d
+```
+
+### 4. Uygulamaya Erişin
+- **Frontend**: http://localhost:5173
+- **API Docs**: http://localhost:8000/docs
+- **Scraper API**: http://localhost:8001/docs
+
+## 📚 API Endpoints
+
+### AI Mikroservisleri
+- `POST /api/v1/ai/extract-keywords` - Anahtar kelime çıkarma
+- `POST /api/v1/ai/analyze-decision` - Karar analizi
+- `POST /api/v1/ai/generate-petition` - Dilekçe şablonu oluşturma
+- `POST /api/v1/ai/smart-search` - Akıllı arama
+
+### Workflow Mikroservisi
+- `POST /api/v1/workflow/complete-analysis` - Tam analiz workflow'u
+
+## 🔧 Geliştirme
+
+### Backend Geliştirme
 ```bash
 cd hukuk-asistan-main
 pip install -r requirements.txt
-python app/main.py
+uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
-#### Yargıtay Scraper API
+### Frontend Geliştirme
+```bash
+cd yargisalzeka-frontend
+npm install
+npm run dev
+```
+
+### Scraper API Geliştirme
 ```bash
 cd yargitay-scraper-api
 pip install -r requirements.txt
-python app/main.py
+uvicorn app.main:app --reload --host 0.0.0.0 --port 8001
 ```
 
-## API Endpoints
+## 🧪 Test Etme
 
-### Hukuk Asistanı
-- `GET /` - Ana sayfa
-- `POST /ask` - Hukuki soru sorma
+### API Test
+```bash
+# Sağlık kontrolü
+curl http://localhost:8000/health
 
-### Yargıtay Scraper API
-- `GET /health` - Sağlık kontrolü
-- `GET /search` - Karar arama
-- `POST /scrape` - Yeni karar çekme
+# Anahtar kelime çıkarma testi
+curl -X POST http://localhost:8000/api/v1/ai/extract-keywords \
+  -H "Content-Type: application/json" \
+  -d '{"case_text": "Müvekkilim A şirketi ile B şirketi arasında imzalanan satış sözleşmesinde..."}'
 
-## Geliştirme
+# Tam workflow testi
+curl -X POST http://localhost:8000/api/v1/workflow/complete-analysis \
+  -H "Content-Type: application/json" \
+  -d '{"case_text": "Test olay metni", "max_results": 5, "include_petition": true}'
+```
 
-Bu proje Python ve FastAPI kullanılarak geliştirilmiştir. Docker containerization ile kolay deployment sağlanmıştır.
+## 📦 Deployment
 
-## Lisans
+### Docker ile Production
+```bash
+# Production build
+docker-compose up -d
+
+# Logları izleme
+docker-compose logs -f
+```
+
+## 🔐 Güvenlik
+
+- API key'leri environment variables'da saklayın
+- Production'da CORS ayarlarını sınırlandırın
+- Rate limiting aktif
+- Input validation ile güvenlik
+
+## 📊 Performans
+
+- **Anahtar kelime çıkarma**: ~1-2 saniye
+- **Yargıtay arama**: ~5-10 saniye
+- **AI analizi**: ~2-3 saniye/karar
+- **Tam workflow**: ~10-20 saniye
+
+## 🔄 Changelog
+
+### v2.0.0 (Güncel)
+- ✅ n8n bağımlılığı kaldırıldı
+- ✅ Mikroservis mimarisi implement edildi
+- ✅ Workflow servisi eklendi
+- ✅ Performance iyileştirmeleri
+- ✅ Docker konfigürasyonu güncellendi
+
+### v1.0.0
+- ✅ İlk versiyon
+- ✅ Temel AI özellikleri
+- ✅ React frontend
+
+## 📞 İletişim
+
+- **Website**: https://yargisalzeka.com
+- **GitHub**: https://github.com/vlikcc/yargisalzeka
+
+## 📄 Lisans
 
 Bu proje özel kullanım için geliştirilmiştir. 
