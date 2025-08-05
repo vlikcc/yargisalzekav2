@@ -1,0 +1,7 @@
+fastapi
+uvicorn[standard]
+pydantic-settings
+loguru
+httpx  # n8n'e asenkron HTTP isteği yapmak için
+python-dotenv
+jinja2

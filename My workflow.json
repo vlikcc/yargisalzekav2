@@ -1,0 +1,490 @@
+{
+  "name": "My workflow",
+  "nodes": [
+    {
+      "parameters": {
+        "modelName": "models/gemini-2.5-pro",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        -1776,
+        704
+      ],
+      "id": "35f99ca3-dc98-46bb-87b3-18c6e3804250",
+      "name": "Google Gemini Chat Model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "UulLTjm5hw2V3sfs",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.body.userCase }}",
+        "options": {
+          "systemMessage": "Sen Türk Hukuku konularında uzman bir asistansın.\nKullanıcının anlattığı olayı analiz et. Yargıtay kararlarında arama yapmak için en uygun anahtar kelimeleri çıkar.\n\nKurallar:\n1. En Az 3 anahtar kelime\n2. En fazla 5 anahtar kelime\n3. Hukuki terimler kullan\n4. JSON formatında döndür: {\n\"analiz\":\"analiz sonucu\",\n\"keywords\": [\"kelime1\", \"kelime2\"]\n}"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.1,
+      "position": [
+        -1776,
+        528
+      ],
+      "id": "50d5df60-ad63-44e9-939c-a441f464ce52",
+      "name": "OLAY ANALİZ VE ANAHTAR KELİME ÇIKARMA AJANI"
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "keywords",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [
+        -1280,
+        528
+      ],
+      "id": "39929ac5-9d02-4e43-a1d7-c1ee2cce30a4",
+      "name": "Split Out"
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-2.5-pro",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        -528,
+        704
+      ],
+      "id": "93a7968c-6654-4b23-bb03-47523df8aa9a",
+      "name": "Google Gemini Chat Model1",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "UulLTjm5hw2V3sfs",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// 1. girdiden (items[0]) Yargıtay kararlarını al\nconst kararlar = $input.first().json.results\n\n// 2. girdiden (items[1]) olay analizini al\nconst olayAnalizi = $('OLAY ANALİZ VE ANAHTAR KELİME ÇIKARMA AJANI').first().json.output\nconst degerlendirilecekKararlar = kararlar.map((karar, index) => {\n  // Burada, her bir karar için yeni bir nesne oluşturuyoruz\n  return {\n    // AI'ın referans vermesi için benzersiz bir ID ekliyoruz\n    karar_id: `karar_${index + 1}`,\n    \n    // İstediğiniz alanları orijinal 'karar' nesnesinden alıyoruz\n    daire: karar.daire,\n    esas_no:karar.esas_no,\n    karar_no: karar.karar_no,\n    karar_tarihi: karar.karar_tarihi,\n    karar_metni: karar.karar_metni,\n    keyword: karar.keyword\n  };\n});\n\n// Tüm verileri tek bir JSON nesnesinde birleştir\nconst AIcontext = {\n  olay_analizi: olayAnalizi,\n  kararlar_listesi: degerlendirilecekKararlar\n};\n\n// Bu birleştirilmiş nesneyi tek bir item olarak AI Agent'a gönder\nreturn [{\n  json: AIcontext\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -720,
+        528
+      ],
+      "id": "f7fddd28-554f-43d9-9587-d472aa301ac0",
+      "name": "Karar Analizi Ön İşleme"
+    },
+    {
+      "parameters": {
+        "jsCode": "// AI Agent'ın çıktısını al. Bu, içinde JSON barındıran bir metindir.\nconst rawOutput = $input.first().json.output\n\n// 1. AI'ın eklediği ```json ve ``` gibi kod bloğu işaretlerini ve\n//    fazla boşlukları temizle.\nlet jsonString = rawOutput.replace(/```json\\n|```/g, \"\").trim();\n\ntry {\n  // 2. Temizlenmiş metni JavaScript'in anlayacağı bir diziye (array) dönüştür.\n  const parsedData = JSON.parse(jsonString);\n\n  // 3. Ayrıştırılan bu dizideki her bir nesneyi n8n'de ayrı bir \"item\" haline getir.\n  //    Bu işlem sonucunda 'olay_analizi' için bir item,\n  //    'yargitay_kararlari' için ise ayrı bir item oluşacak.\n  const n8nItems = parsedData.map(item => {\n    return {\n      json: item\n    };\n  });\n\n  // 4. İşlenmiş ve ayrılmış yeni item'ları iş akışının bir sonraki adımına gönder.\n  return n8nItems;\n\n} catch (e) {\n  console.error(\"JSON ayrıştırma sırasında bir hata oluştu: \", e);\n  console.error(\"Hatalı Metin: \", jsonString);\n  throw new Error(\"AI Agent çıktısı geçerli bir JSON formatında değildi. Lütfen çıktıyı kontrol edin.\");\n}"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -176,
+        528
+      ],
+      "id": "48981a8d-8dce-4f9f-9a6d-45128084f1ec",
+      "name": "dilekçe hazırlama ön işleme"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ JSON.stringify($json.kararlar_listesi) }}\n BU YARGITAY KARARLARINI, {{$input.item.json.olay_analizi}}BU OLAY ANALİZİNE UYGUNLUĞUNA GÖRE PUANLA.EN YÜKSEK PUANI ALAN 3 KARARI  VE OLAY ANALİZİNİ AYNI FORMATTA VER.  \n",
+        "options": {
+          "systemMessage": "SANA VERİLEN GÖREVİ KULLANICININ VERDİĞİ BİLGİLER İLE TAMAMLA.\n* DIŞARIDAN HER HANGİ BİR BİLGİ YA DA KAYNAK KULLANMA.\n* SADECE KULLANICININ VERDİĞİ BİLGİLERİ KULLAN.\n* ÖRNEK ÇIKTI:\n[\n{\n\"olay_analizi\": \"BURAYA OLAY ANALİZ METNİ GELECEK\"\n},\n{\n\"yargitay_kararlari:[\n{\n\n\"karar_id\":\n\"daire\":\n\"esas_no\": \n\"karar_no\": \n\"karar_tarihi\": \n\"karar_metni\": \n}\n]\n}\n]\n"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.1,
+      "position": [
+        -528,
+        528
+      ],
+      "id": "76ff177e-a155-4705-a99f-df1b9b36e575",
+      "name": "KARAR ANALİZİ"
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-2.5-pro",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        0,
+        704
+      ],
+      "id": "c4c65812-cdc7-4d05-b917-7842f0431346",
+      "name": "Google Gemini Chat Model2",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "UulLTjm5hw2V3sfs",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.olay_analizi }} BU OLAYA  GÖRE {{$input.last().json.yargitay_kararlari[0].karar_metni }} , {{$input.last().json.yargitay_kararlari[1].karar_metni }} , {{$input.last().json.yargitay_kararlari[2].karar_metni }} BU YARGITAY KARARLARINI KULLANARAK ÖRNEK BİR DİLEKÇE ŞABLONU HAZIRLA.",
+        "options": {
+          "systemMessage": "*  DİLEKÇE HAZIRLARKEN SADECE SANA VERİLEN YARGITAY KARARLARINI KULLAN"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        528
+      ],
+      "id": "67e07640-b843-4495-8279-e8289bf685ac",
+      "name": "DİLEKÇE HAZIRLAMA"
+    },
+    {
+      "parameters": {
+        "jsCode": "const keywords = $input.first().json.output;\n\n// Kod bloğu etiketlerini ve boşlukları temizle\nconst cleanJson = keywords.replace(/```json\\s*/i, '').replace(/```$/, '').trim();\n\n// JSON string'ini nesneye çevir\nconst parsed = JSON.parse(cleanJson);\n\n// Sadece keywords dizisini içeren sade nesne olarak döndür\nreturn {\n  keywords: parsed.keywords\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1440,
+        528
+      ],
+      "id": "a48f359b-2917-424c-a9bf-08c860a21348",
+      "name": "ANAHTAR KELİME AYRIŞTIRMA"
+    },
+    {
+      "parameters": {
+        "jsCode": "const search_query = $input.all().map(item=>item.json.keywords)\nreturn {\n  json : {\n    search_query\n  }\n}"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1088,
+        528
+      ],
+      "id": "0349caac-299f-4baf-b69c-89b6e23863c2",
+      "name": "ARAMA SORGUSU HAZIRLAMA"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://scraper-api:8001/search",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "keywords",
+              "value": "={{ $json.search_query }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -912,
+        528
+      ],
+      "id": "1224828b-2f20-4510-aa38-42179b4f0124",
+      "name": "YARGITAY KARAR ARAMA",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "UUk8wUVYmuX06SgP",
+          "name": "ScraperApiKey"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "8fcdd8f9-efb2-4b7d-9ecb-14d9074b2787",
+        "authentication": "headerAuth",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -1936,
+        528
+      ],
+      "id": "d24059d3-6703-4ec6-a429-0ff6807ef55d",
+      "name": "Webhook",
+      "webhookId": "8fcdd8f9-efb2-4b7d-9ecb-14d9074b2787",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "tLSvdSdPi2UlxOtI",
+          "name": "AnaUrunAPIAuth"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "{\n  \"success\": false,\n  \"message\": \"Arka planda çalışan karar arama servisinde bir sorun oluştu. Lütfen daha sonra tekrar deneyin.\"\n}",
+        "options": {
+          "responseCode": 503
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        -768,
+        720
+      ],
+      "id": "c890c0bf-da80-4fc9-a870-bcdbbac37ecf",
+      "name": "Respond to Webhook"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://main-api:8000/api/v1/analysis/result",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "analysis_result",
+              "value": "={{ $json.output }}"
+            },
+            {
+              "name": "transaction_id",
+              "value": "={{ $('Webhook').first().json.transactionId }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        384,
+        528
+      ],
+      "id": "698a3f35-e61d-4913-adfd-39cef1397fde",
+      "name": "SONUCU APİYE GÖNDER",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "tLSvdSdPi2UlxOtI",
+          "name": "AnaUrunAPIAuth"
+        }
+      }
+    }
+  ],
+  "pinData": {
+    "Webhook": [
+      {
+        "json": {
+          "headers": {
+            "host": "n8n:5678",
+            "accept": "*/*",
+            "accept-encoding": "gzip, deflate",
+            "connection": "keep-alive",
+            "user-agent": "python-httpx/0.28.1",
+            "x-n8n-auth-secret": "Vlikcc1931",
+            "content-type": "application/json",
+            "content-length": "109"
+          },
+          "params": {},
+          "query": {},
+          "body": {
+            "userCase": "kat karşılığı inşaat sözleşmesi",
+            "transactionId": "54531e05-de14-4ec1-9277-5b6b0fba2410"
+          },
+          "webhookUrl": "http://localhost:5678/webhook/8fcdd8f9-efb2-4b7d-9ecb-14d9074b2787",
+          "executionMode": "production"
+        }
+      }
+    ]
+  },
+  "connections": {
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "OLAY ANALİZ VE ANAHTAR KELİME ÇIKARMA AJANI",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OLAY ANALİZ VE ANAHTAR KELİME ÇIKARMA AJANI": {
+      "main": [
+        [
+          {
+            "node": "ANAHTAR KELİME AYRIŞTIRMA",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Out": {
+      "main": [
+        [
+          {
+            "node": "ARAMA SORGUSU HAZIRLAMA",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "KARAR ANALİZİ",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Karar Analizi Ön İşleme": {
+      "main": [
+        [
+          {
+            "node": "KARAR ANALİZİ",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "KARAR ANALİZİ": {
+      "main": [
+        [
+          {
+            "node": "dilekçe hazırlama ön işleme",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "dilekçe hazırlama ön işleme": {
+      "main": [
+        [
+          {
+            "node": "DİLEKÇE HAZIRLAMA",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model2": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "DİLEKÇE HAZIRLAMA",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ANAHTAR KELİME AYRIŞTIRMA": {
+      "main": [
+        [
+          {
+            "node": "Split Out",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ARAMA SORGUSU HAZIRLAMA": {
+      "main": [
+        [
+          {
+            "node": "YARGITAY KARAR ARAMA",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "YARGITAY KARAR ARAMA": {
+      "main": [
+        [
+          {
+            "node": "Karar Analizi Ön İşleme",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "OLAY ANALİZ VE ANAHTAR KELİME ÇIKARMA AJANI",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "DİLEKÇE HAZIRLAMA": {
+      "main": [
+        [
+          {
+            "node": "SONUCU APİYE GÖNDER",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "f51118ee-15c9-4d4b-9b4f-79543db42f93",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "cfa4a7f2e7b7a8535574559f93434d432d37fe4f2039cc3ec58af89ef285ac97"
+  },
+  "id": "ieorW0tedqH3M2qm",
+  "tags": []
+}

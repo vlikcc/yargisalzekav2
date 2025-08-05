@@ -1,0 +1,68 @@
+version: '3.8'
+
+services:
+  # Ana Ürün API'si (Beyin)
+  main-api:
+    build:
+      context: ./hukuk-asistan-main
+    ports:
+      - "8000:8000"
+    # volumes:
+    #   - ./hukuk-asistan-main/app:/code/app
+    env_file:
+      - .env
+    depends_on:
+      - scraper-api
+
+  # Scraper API (İşçi)
+  scraper-api:
+    build:
+      context: ./yargitay-scraper-api
+    ports:
+      - "8001:8001"
+    # volumes:
+    #   - ./yargitay-scraper-api/app:/code/app
+    #   - ./yargitay-scraper-api/logs:/code/logs
+    env_file:
+      - .env
+    depends_on:
+      - selenium-hub
+
+  # n8n Servisi
+  n8n:
+    image: n8nio/n8n
+    ports:
+      - "5678:5678"
+    volumes:
+      - n8n_data:/home/node/.n8n
+    environment:
+      - TZ=Europe/Istanbul
+    depends_on:
+      - main-api
+      - scraper-api
+
+  # Selenium Servisleri
+  selenium-hub:
+    image: selenium/hub:4.11.0
+    ports:
+      - "4442:4442"
+      - "4443:4443"
+      - "4444:4444"
+
+  chrome-node:
+    image: selenium/node-chrome:4.11.0
+    depends_on:
+      - selenium-hub
+    environment:
+      - SE_EVENT_BUS_HOST=selenium-hub
+      - SE_EVENT_BUS_PUBLISH_PORT=4442
+      - SE_EVENT_BUS_SUBSCRIBE_PORT=4443
+      - SE_VNC_NO_PASSWORD=1
+    ports:
+      - "7900:7900"  # VNC web interface
+    shm_size: '2g'
+
+# Ana seviyedeki "volumes" tanımı
+# mongo_data kaldırıldı
+volumes:
+  n8n_data:
