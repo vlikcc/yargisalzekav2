@@ -1,8 +1,7 @@
-# /yargitay-scraper-api/app/schemas.py
+# /yargitay-scraper-api/app/schemas.py (MongoDB'siz)
 
-from pydantic import BaseModel, ConfigDict
-from typing import List
-from beanie import PydanticObjectId # <-- MongoDB'nin ID tipi için özel import
+from pydantic import BaseModel
+from typing import List, Dict, Any, Optional
 
 # --- Arama Şemaları ---
 class ResultItem(BaseModel):
@@ -12,33 +11,22 @@ class ResultItem(BaseModel):
     karar_tarihi: str
     karar_metni: str
     keyword: str
+    case_number: Optional[str] = None
+    title: Optional[str] = None
+    content: Optional[str] = None
+    date: Optional[str] = None
+    court: Optional[str] = None
+    url: Optional[str] = None
 
 class SearchRequest(BaseModel):
     keywords: List[str]
+    max_results: Optional[int] = 50
 
 class SearchResponse(BaseModel):
     results: List[ResultItem]
     success: bool
     message: str
-    search_details: dict
-
-# --- Kullanıcı Şemaları (NİHAİ VERSİYON) ---
-class UserBase(BaseModel):
-    email: str
-
-class UserCreate(UserBase):
-    password: str
-
-# Bu şema, veritabanından gelen User modelini API yanıtına dönüştürür
-class User(UserBase):
-    id: PydanticObjectId # <-- ID tipini Beanie'nin kendi tipi olarak belirtiyoruz
-    api_key: str
-    is_active: bool
-    search_count: int
-    subscription_status: str
-
-    # Pydantic V2 için veritabanı modelinden veri okuma yapılandırması
-    model_config = ConfigDict(
-        from_attributes=True,       # orm_mode'un yeni ve doğru adı
-        arbitrary_types_allowed=True # PydanticObjectId gibi özel tiplere izin verir
-    )
+    search_details: Dict[str, Any]
+    processing_time: Optional[float] = None
+    total_keywords: Optional[int] = None
+    unique_results: Optional[int] = None
