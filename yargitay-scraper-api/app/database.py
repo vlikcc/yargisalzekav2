@@ -427,11 +427,23 @@ async def init_database():
     """Database'i başlat"""
     connection_string = os.getenv("MONGODB_CONNECTION_STRING")
     if not connection_string:
-        logger.error("MONGODB_CONNECTION_STRING environment variable bulunamadı")
+        logger.warning("MONGODB_CONNECTION_STRING environment variable bulunamadı, fallback mode'da çalışılacak")
         return False
     
-    database_name = os.getenv("MONGODB_DATABASE_NAME", "yargisalzeka")
-    return await db_manager.connect(connection_string, database_name)
+    # Default database name with fallback
+    database_name = os.getenv("MONGODB_DATABASE_NAME")
+    if not database_name:
+        database_name = "yargisalzeka"
+        logger.warning(f"MONGODB_DATABASE_NAME bulunamadı, varsayılan kullanılıyor: {database_name}")
+    
+    try:
+        success = await db_manager.connect(connection_string, database_name)
+        if success:
+            logger.info(f"Scraper API MongoDB Atlas'a başarıyla bağlandı: {database_name}")
+        return success
+    except Exception as e:
+        logger.error(f"MongoDB bağlantı hatası: {e}, fallback mode'da çalışılacak")
+        return False
 
 
 async def close_database():
@@ -443,5 +455,13 @@ async def close_database():
 async def init_db():
     """
     Uygulama başladığında veritabanı bağlantısını ve Beanie'yi başlatır.
+    MongoDB bağlantısı başarısız olursa fallback mode'da çalışır.
     """
-    return await init_database()
+    try:
+        success = await init_database()
+        if not success:
+            logger.warning("MongoDB bağlantısı kurulamadı, in-memory cache mode'da çalışılıyor")
+        return success
+    except Exception as e:
+        logger.error(f"Database initialization hatası: {e}, fallback mode aktif")
+        return False

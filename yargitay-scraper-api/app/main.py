@@ -37,17 +37,25 @@ search_stats = {"total_searches": 0, "total_results": 0}
 async def lifespan(app: FastAPI):
     logger.info("Yargıtay Scraper API başlatıldı")
     
-    # MongoDB Atlas bağlantısını başlat
-    db_connected = await init_database()
-    if db_connected:
-        logger.info("MongoDB Atlas bağlantısı başarılı")
-    else:
-        logger.warning("MongoDB Atlas bağlantısı başarısız - cache modunda çalışılacak")
+    # MongoDB Atlas bağlantısını başlat (hata durumunda fallback)
+    try:
+        db_connected = await init_db()
+        if db_connected:
+            logger.info("MongoDB Atlas bağlantısı başarılı")
+        else:
+            logger.warning("MongoDB Atlas bağlantısı başarısız - in-memory cache modunda çalışılacak")
+    except Exception as e:
+        logger.error(f"Database initialization hatası: {e} - fallback mode aktif")
+        db_connected = False
     
     yield
     
-    # MongoDB bağlantısını kapat
-    await close_database()
+    # MongoDB bağlantısını güvenli şekilde kapat
+    try:
+        await close_database()
+        logger.info("MongoDB bağlantısı kapatıldı")
+    except Exception as e:
+        logger.warning(f"Database kapatma hatası: {e}")
     logger.info("Yargıtay Scraper API kapatıldı")
 
 # --- FastAPI Uygulaması ---
