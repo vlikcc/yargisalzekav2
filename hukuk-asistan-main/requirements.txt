@@ -6,3 +6,6 @@ httpx  # n8n'e asenkron HTTP isteği yapmak için
 python-dotenv
 jinja2
 google-generativeai  # Google Gemini AI
+motor  # Async MongoDB driver
+pymongo  # MongoDB driver
+beanie  # ODM for MongoDB

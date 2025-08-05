@@ -8,3 +8,6 @@ passlib[bcrypt]
 python-dotenv
 slowapi
 python-multipart
+motor  # Async MongoDB driver
+pymongo  # MongoDB driver
+beanie  # ODM for MongoDB

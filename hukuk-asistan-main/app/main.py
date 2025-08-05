@@ -16,6 +16,7 @@ from .schemas import (
 )
 from .ai_service import gemini_service
 from .workflow_service import workflow_service
+from .database import init_database, close_database, db_manager, log_api_usage
 
 # --- Loglama ---
 logger.remove()
@@ -24,6 +25,13 @@ logger.add(sys.stdout, format="{time} {level} {message}", level=settings.LOG_LEV
 # --- Uygulama ---
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    # MongoDB Atlas bağlantısını başlat
+    db_connected = await init_database()
+    if db_connected:
+        logger.info("Main API MongoDB Atlas bağlantısı başarılı")
+    else:
+        logger.warning("Main API MongoDB Atlas bağlantısı başarısız - cache modunda çalışılacak")
+    
     # httpx client'ı yapılandır
     timeout = httpx.Timeout(
         connect=5.0,   # Bağlantı timeout'u
@@ -34,13 +42,16 @@ async def lifespan(app: FastAPI):
     app.state.http_client = httpx.AsyncClient(timeout=timeout)
     logger.info("Yargısal Zeka API'si başlatıldı.")
     yield
+    
+    # Cleanup
     await app.state.http_client.aclose()
+    await close_database()
     logger.info("Yargısal Zeka API'si kapatıldı.")
 
 app = FastAPI(
     title=settings.API_TITLE,
-    version=settings.API_VERSION,
-    description=settings.API_DESCRIPTION,
+    version="2.1.0",  # MongoDB Atlas versiyonu
+    description=settings.API_DESCRIPTION + " (MongoDB Atlas)",
     lifespan=lifespan
 )
 

@@ -1,7 +1,7 @@
 version: '3.8'
 
 services:
-  # Ana Ürün API'si (Beyin)
+  # Ana Ürün API'si (Beyin) - MongoDB Atlas
   main-api:
     build:
       context: ./hukuk-asistan-main
@@ -13,8 +13,11 @@ services:
       - scraper-api
     environment:
       - SCRAPER_API_URL=http://scraper-api:8001
+      - MONGODB_CONNECTION_STRING=${MONGODB_CONNECTION_STRING}
+      - MONGODB_DATABASE_NAME=${MONGODB_DATABASE_NAME:-yargisalzeka}
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
 
-  # Scraper API (İşçi)
+  # Scraper API (İşçi) - MongoDB Atlas
   scraper-api:
     build:
       context: ./yargitay-scraper-api
@@ -24,6 +27,10 @@ services:
       - .env
     depends_on:
       - selenium-hub
+    environment:
+      - MONGODB_CONNECTION_STRING=${MONGODB_CONNECTION_STRING}
+      - MONGODB_DATABASE_NAME=${MONGODB_DATABASE_NAME:-yargisalzeka}
+      - SELENIUM_GRID_URL=http://selenium-hub:4444/wd/hub
 
   # Selenium Servisleri
   selenium-hub:

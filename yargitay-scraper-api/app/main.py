@@ -19,6 +19,7 @@ from contextlib import asynccontextmanager
 from . import schemas
 from .config import settings
 from .search_logic import search_single_keyword
+from .database import init_database, close_database, db_manager, YargitayDecision, SearchQuery, UserActivity
 
 # --- Loglama Yapılandırması ---
 logger.remove()
@@ -34,15 +35,26 @@ search_stats = {"total_searches": 0, "total_results": 0}
 # --- Uygulama Yaşam Döngüsü ---
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    logger.info("Yargıtay Scraper API başlatıldı (MongoDB'siz)")
+    logger.info("Yargıtay Scraper API başlatıldı")
+    
+    # MongoDB Atlas bağlantısını başlat
+    db_connected = await init_database()
+    if db_connected:
+        logger.info("MongoDB Atlas bağlantısı başarılı")
+    else:
+        logger.warning("MongoDB Atlas bağlantısı başarısız - cache modunda çalışılacak")
+    
     yield
+    
+    # MongoDB bağlantısını kapat
+    await close_database()
     logger.info("Yargıtay Scraper API kapatıldı")
 
 # --- FastAPI Uygulaması ---
 app = FastAPI(
     title="Yargıtay Scraper API",
-    description="Yargıtay Karar Arama Servisi (MongoDB'siz)",
-    version="2.0.0",
+    description="Yargıtay Karar Arama Servisi (MongoDB Atlas)",
+    version="2.1.0",
     lifespan=lifespan
 )
 app.state.limiter = limiter
