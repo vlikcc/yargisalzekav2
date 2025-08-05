@@ -1,5 +1,5 @@
 """
-MongoDB Atlas Database Configuration for Main API
+Extended MongoDB Atlas Database Models for Main API
 """
 import os
 from typing import Optional, List, Dict, Any
@@ -14,20 +14,7 @@ from enum import Enum
 load_dotenv()
 
 
-# Enums
-class SubscriptionPlan(str, Enum):
-    TEMEL = "temel"
-    STANDART = "standart"
-    PREMIUM = "premium"
-
-
-class PaymentStatus(str, Enum):
-    PENDING = "pending"
-    COMPLETED = "completed"
-    FAILED = "failed"
-    REFUNDED = "refunded"
-
-
+# Additional Enums
 class PetitionCategory(str, Enum):
     TRAFIK = "trafik"
     TICARET = "ticaret"
@@ -55,118 +42,7 @@ class FeedbackType(str, Enum):
     COMPLIMENT = "compliment"
 
 
-# Core Collections
-class User(Document):
-    """Kullanıcı Hesapları MongoDB Modeli"""
-    
-    user_id: str = Field(..., description="Kullanıcı ID")
-    email: EmailStr = Field(..., description="Email adresi")
-    password_hash: str = Field(..., description="Şifrelenmiş şifre")
-    first_name: str = Field(..., description="Ad")
-    last_name: str = Field(..., description="Soyad")
-    
-    # Subscription info
-    subscription_plan: SubscriptionPlan = Field(default=SubscriptionPlan.TEMEL, description="Abonelik planı")
-    subscription_start: Optional[datetime] = Field(None, description="Abonelik başlangıç tarihi")
-    subscription_end: Optional[datetime] = Field(None, description="Abonelik bitiş tarihi")
-    is_active: bool = Field(default=True, description="Hesap aktif mi")
-    
-    # Usage limits
-    monthly_search_limit: int = Field(default=50, description="Aylık arama limiti")
-    monthly_searches_used: int = Field(default=0, description="Bu ay kullanılan arama sayısı")
-    last_search_reset: datetime = Field(default_factory=datetime.utcnow, description="Son arama sayacı sıfırlama")
-    
-    # Metadata
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
-    last_login: Optional[datetime] = Field(None, description="Son giriş tarihi")
-    
-    class Settings:
-        name = "users"
-        indexes = [
-            "user_id",
-            "email",
-            "subscription_plan",
-            "created_at"
-        ]
-
-
-class Subscription(Document):
-    """Abonelik Yönetimi MongoDB Modeli"""
-    
-    subscription_id: str = Field(..., description="Abonelik ID")
-    user_id: str = Field(..., description="Kullanıcı ID")
-    plan: SubscriptionPlan = Field(..., description="Abonelik planı")
-    
-    # Pricing
-    monthly_price: float = Field(..., description="Aylık ücret")
-    currency: str = Field(default="TRY", description="Para birimi")
-    
-    # Limits and features
-    search_limit: int = Field(..., description="Aylık arama limiti")
-    petition_limit: Optional[int] = Field(None, description="Aylık dilekçe limiti")
-    api_access: bool = Field(default=False, description="API erişimi")
-    priority_support: bool = Field(default=False, description="Öncelikli destek")
-    
-    # Status
-    is_active: bool = Field(default=True, description="Abonelik aktif mi")
-    auto_renewal: bool = Field(default=True, description="Otomatik yenileme")
-    
-    # Dates
-    start_date: datetime = Field(..., description="Başlangıç tarihi")
-    end_date: datetime = Field(..., description="Bitiş tarihi")
-    next_billing_date: Optional[datetime] = Field(None, description="Sonraki fatura tarihi")
-    
-    # Metadata
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
-    
-    class Settings:
-        name = "subscriptions"
-        indexes = [
-            "subscription_id",
-            "user_id",
-            "plan",
-            "is_active",
-            "end_date"
-        ]
-
-
-class Payment(Document):
-    """Ödeme Geçmişi MongoDB Modeli"""
-    
-    payment_id: str = Field(..., description="Ödeme ID")
-    user_id: str = Field(..., description="Kullanıcı ID")
-    subscription_id: str = Field(..., description="Abonelik ID")
-    
-    # Payment details
-    amount: float = Field(..., description="Ödeme tutarı")
-    currency: str = Field(default="TRY", description="Para birimi")
-    payment_method: str = Field(..., description="Ödeme yöntemi")
-    
-    # Status
-    status: PaymentStatus = Field(..., description="Ödeme durumu")
-    transaction_id: Optional[str] = Field(None, description="İşlem ID")
-    
-    # Billing
-    billing_period_start: datetime = Field(..., description="Fatura dönemi başlangıç")
-    billing_period_end: datetime = Field(..., description="Fatura dönemi bitiş")
-    
-    # Metadata
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    processed_at: Optional[datetime] = Field(None, description="İşlenme tarihi")
-    
-    class Settings:
-        name = "payments"
-        indexes = [
-            "payment_id",
-            "user_id",
-            "subscription_id",
-            "status",
-            "created_at"
-        ]
-
-
+# Extended Collections
 class PetitionTemplate(Document):
     """Dilekçe Şablonları MongoDB Modeli"""
     
@@ -207,95 +83,6 @@ class PetitionTemplate(Document):
             "is_approved",
             "created_at",
             [("title", "text"), ("template_content", "text")]
-        ]
-
-
-# Existing Collections (from original database.py)
-class AnalysisResult(Document):
-    """AI Analiz Sonuçları MongoDB Modeli"""
-    
-    analysis_id: str = Field(..., description="Analiz ID")
-    user_id: Optional[str] = Field(None, description="Kullanıcı ID")
-    case_text: str = Field(..., description="Olay metni")
-    extracted_keywords: List[str] = Field(default=[], description="Çıkarılan anahtar kelimeler")
-    
-    # Search results
-    search_results: List[Dict[str, Any]] = Field(default=[], description="Arama sonuçları")
-    scored_results: List[Dict[str, Any]] = Field(default=[], description="Puanlanmış sonuçlar")
-    
-    # AI Analysis
-    ai_analysis: Optional[Dict[str, Any]] = Field(None, description="AI analiz detayları")
-    petition_template: Optional[str] = Field(None, description="Dilekçe şablonu")
-    
-    # Metadata
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    execution_time: Optional[float] = Field(None, description="Toplam çalışma süresi")
-    
-    class Settings:
-        name = "analysis_results"
-        indexes = [
-            "analysis_id",
-            "user_id",
-            "created_at",
-            [("case_text", "text")]
-        ]
-
-
-class UserSession(Document):
-    """Kullanıcı Oturumları MongoDB Modeli"""
-    
-    session_id: str = Field(..., description="Oturum ID")
-    user_id: Optional[str] = Field(None, description="Kullanıcı ID")
-    ip_address: str = Field(..., description="IP adresi")
-    user_agent: Optional[str] = Field(None, description="User agent")
-    
-    # Session data
-    session_data: Dict[str, Any] = Field(default={}, description="Oturum verisi")
-    
-    # Timing
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    last_activity: datetime = Field(default_factory=datetime.utcnow)
-    expires_at: Optional[datetime] = Field(None, description="Oturum bitiş zamanı")
-    
-    class Settings:
-        name = "user_sessions"
-        indexes = [
-            "session_id",
-            "user_id",
-            "ip_address",
-            "created_at",
-            "expires_at"
-        ]
-
-
-class APIUsage(Document):
-    """API Kullanım İstatistikleri MongoDB Modeli"""
-    
-    usage_id: str = Field(..., description="Kullanım ID")
-    endpoint: str = Field(..., description="API endpoint")
-    method: str = Field(..., description="HTTP method")
-    
-    # Request data
-    user_id: Optional[str] = Field(None, description="Kullanıcı ID")
-    ip_address: str = Field(..., description="IP adresi")
-    request_size: Optional[int] = Field(None, description="İstek boyutu")
-    response_size: Optional[int] = Field(None, description="Yanıt boyutu")
-    
-    # Performance
-    response_time: Optional[float] = Field(None, description="Yanıt süresi (ms)")
-    status_code: int = Field(..., description="HTTP status code")
-    
-    # Timing
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    
-    class Settings:
-        name = "api_usage"
-        indexes = [
-            "endpoint",
-            "user_id",
-            "ip_address",
-            "created_at",
-            "status_code"
         ]
 
 
@@ -503,8 +290,9 @@ class SystemSetting(Document):
         ]
 
 
-class DatabaseManager:
-    """MongoDB Atlas Database Manager for Main API"""
+# Extended Database Manager
+class ExtendedDatabaseManager:
+    """Extended MongoDB Atlas Database Manager"""
     
     def __init__(self):
         self.client: Optional[AsyncIOMotorClient] = None
@@ -516,48 +304,39 @@ class DatabaseManager:
             self.client = AsyncIOMotorClient(connection_string)
             self.database = self.client[database_name]
             
+            # Import existing models
+            from .database import (
+                User, Subscription, Payment, KeywordsCache, SearchCache, 
+                AIAnalysisCache, YargitayDecision, SearchQuery, UserActivity,
+                AnalysisResult, UserSession, APIUsage
+            )
+            
             # Beanie'yi başlat - tüm modeller
             await init_beanie(
                 database=self.database,
                 document_models=[
-                    # Core models
-                    User, Subscription, Payment, PetitionTemplate,
-                    # Data models
+                    # Existing core models
+                    User, Subscription, Payment,
+                    # Existing cache models
+                    KeywordsCache, SearchCache, AIAnalysisCache,
+                    # Existing data models
+                    YargitayDecision, SearchQuery, UserActivity,
                     AnalysisResult, UserSession, APIUsage,
-                    # System models
-                    SystemLog, Notification, Feedback, AdminUser, SystemSetting
+                    # New extended models
+                    PetitionTemplate, SystemLog, Notification,
+                    Feedback, AdminUser, SystemSetting
                 ]
             )
             
-            logger.info(f"Main API MongoDB Atlas'a başarıyla bağlandı: {database_name}")
+            logger.info(f"Extended MongoDB Atlas'a başarıyla bağlanıldı: {database_name}")
             return True
             
         except Exception as e:
-            logger.error(f"Main API MongoDB Atlas bağlantı hatası: {e}")
+            logger.error(f"Extended MongoDB Atlas bağlantı hatası: {e}")
             return False
     
-    async def disconnect(self):
-        """MongoDB bağlantısını kapat"""
-        if self.client:
-            self.client.close()
-            logger.info("Main API MongoDB bağlantısı kapatıldı")
-    
-    async def health_check(self) -> bool:
-        """Database sağlık kontrolü"""
-        try:
-            if not self.client:
-                return False
-            
-            # Ping database
-            await self.client.admin.command('ping')
-            return True
-            
-        except Exception as e:
-            logger.error(f"Main API Database sağlık kontrolü başarısız: {e}")
-            return False
-    
-    async def get_stats(self) -> Dict[str, Any]:
-        """Database istatistikleri"""
+    async def get_extended_stats(self) -> Dict[str, Any]:
+        """Genişletilmiş database istatistikleri"""
         try:
             stats = {}
             
@@ -565,133 +344,44 @@ class DatabaseManager:
             stats["users_count"] = await User.count()
             stats["subscriptions_count"] = await Subscription.count()
             stats["payments_count"] = await Payment.count()
-            stats["petition_templates_count"] = await PetitionTemplate.count()
+            
+            # Cache collections
+            stats["keywords_cache_count"] = await KeywordsCache.count()
+            stats["search_cache_count"] = await SearchCache.count()
+            stats["ai_analysis_cache_count"] = await AIAnalysisCache.count()
             
             # Data collections
-            stats["analysis_count"] = await AnalysisResult.count()
-            stats["sessions_count"] = await UserSession.count()
-            stats["api_usage_count"] = await APIUsage.count()
+            stats["decisions_count"] = await YargitayDecision.count()
+            stats["queries_count"] = await SearchQuery.count()
+            stats["activities_count"] = await UserActivity.count()
             
-            # System collections
+            # Extended collections
+            stats["petition_templates_count"] = await PetitionTemplate.count()
             stats["system_logs_count"] = await SystemLog.count()
             stats["notifications_count"] = await Notification.count()
             stats["feedback_count"] = await Feedback.count()
             stats["admin_users_count"] = await AdminUser.count()
             stats["system_settings_count"] = await SystemSetting.count()
             
-            # Recent activity
+            # Recent activity (last 7 days)
+            from datetime import timedelta
             recent_date = datetime.utcnow() - timedelta(days=7)
-            stats["recent_analysis"] = await AnalysisResult.find(
-                AnalysisResult.created_at >= recent_date
-            ).count()
+            stats["recent_users"] = await User.find(User.created_at >= recent_date).count()
+            stats["recent_searches"] = await SearchQuery.find(SearchQuery.created_at >= recent_date).count()
+            stats["recent_feedback"] = await Feedback.find(Feedback.created_at >= recent_date).count()
             
             return stats
             
         except Exception as e:
-            logger.error(f"Main API Database istatistikleri alınamadı: {e}")
+            logger.error(f"Extended database istatistikleri alınamadı: {e}")
             return {}
 
 
-# Global database manager instance
-db_manager = DatabaseManager()
+# Global extended database manager instance
+extended_db_manager = ExtendedDatabaseManager()
 
 
-async def get_database():
-    """Database instance'ını al"""
-    return db_manager.database
-
-
-async def init_database():
-    """Database'i başlat"""
-    connection_string = os.getenv("MONGODB_CONNECTION_STRING")
-    if not connection_string:
-        logger.error("MONGODB_CONNECTION_STRING environment variable bulunamadı")
-        return False
-    
-    database_name = os.getenv("MONGODB_DATABASE_NAME", "yargisalzeka")
-    success = await db_manager.connect(connection_string, database_name)
-    
-    if success:
-        # Varsayılan verileri oluştur
-        await create_default_system_settings()
-        await create_default_admin_user()
-    
-    return success
-
-
-async def close_database():
-    """Database bağlantısını kapat"""
-    await db_manager.disconnect()
-
-
-# Utility functions
-async def save_analysis_result(
-    analysis_id: str,
-    case_text: str,
-    keywords: List[str],
-    search_results: List[Dict],
-    scored_results: List[Dict],
-    ai_analysis: Dict = None,
-    petition_template: str = None,
-    execution_time: float = None,
-    user_id: str = None
-) -> bool:
-    """Analiz sonucunu MongoDB'ye kaydet"""
-    try:
-        analysis = AnalysisResult(
-            analysis_id=analysis_id,
-            user_id=user_id,
-            case_text=case_text,
-            extracted_keywords=keywords,
-            search_results=search_results,
-            scored_results=scored_results,
-            ai_analysis=ai_analysis,
-            petition_template=petition_template,
-            execution_time=execution_time
-        )
-        
-        await analysis.save()
-        logger.info(f"Analiz sonucu kaydedildi: {analysis_id}")
-        return True
-        
-    except Exception as e:
-        logger.error(f"Analiz sonucu kaydedilemedi: {e}")
-        return False
-
-
-async def log_api_usage(
-    endpoint: str,
-    method: str,
-    ip_address: str,
-    status_code: int,
-    response_time: float = None,
-    user_id: str = None,
-    request_size: int = None,
-    response_size: int = None
-) -> bool:
-    """API kullanımını MongoDB'ye kaydet"""
-    try:
-        import uuid
-        usage = APIUsage(
-            usage_id=str(uuid.uuid4()),
-            endpoint=endpoint,
-            method=method,
-            ip_address=ip_address,
-            status_code=status_code,
-            response_time=response_time,
-            user_id=user_id,
-            request_size=request_size,
-            response_size=response_size
-        )
-        
-        await usage.save()
-        return True
-        
-    except Exception as e:
-        logger.error(f"API kullanımı kaydedilemedi: {e}")
-        return False
-
-
+# Utility functions for extended models
 async def create_default_system_settings():
     """Varsayılan sistem ayarlarını oluştur"""
     default_settings = [
@@ -766,4 +456,22 @@ async def create_default_admin_user():
         
         await admin.save()
         logger.info(f"Varsayılan admin kullanıcısı oluşturuldu: {admin_email}")
+
+
+async def init_extended_database():
+    """Genişletilmiş database'i başlat"""
+    connection_string = os.getenv("MONGODB_CONNECTION_STRING")
+    if not connection_string:
+        logger.error("MONGODB_CONNECTION_STRING environment variable bulunamadı")
+        return False
+    
+    database_name = os.getenv("MONGODB_DATABASE_NAME", "yargisalzeka")
+    success = await extended_db_manager.connect(connection_string, database_name)
+    
+    if success:
+        # Varsayılan verileri oluştur
+        await create_default_system_settings()
+        await create_default_admin_user()
+    
+    return success
 
