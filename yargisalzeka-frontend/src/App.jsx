@@ -12,12 +12,14 @@ function App() {
   const [searchResults, setSearchResults] = useState([])
   const [keywords, setKeywords] = useState([])
   const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState('')
   const [activeTab, setActiveTab] = useState('search')
 
   const handleSmartSearch = async () => {
     if (!caseText.trim()) return
     
     setIsLoading(true)
+    setError('')
     try {
       const response = await fetch('/api/v1/ai/smart-search', {
         method: 'POST',
@@ -30,13 +32,21 @@ function App() {
         })
       })
       
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+      
       const data = await response.json()
       if (data.success) {
         setKeywords(data.keywords)
         setSearchResults(data.analyzed_results)
+        setError('')
+      } else {
+        setError(data.message || 'Arama sırasında bir hata oluştu')
       }
     } catch (error) {
       console.error('Arama hatası:', error)
+      setError('Sunucuya bağlanırken bir hata oluştu. Lütfen daha sonra tekrar deneyin.')
     } finally {
       setIsLoading(false)
     }
@@ -164,6 +174,11 @@ function App() {
                     </>
                   )}
                 </Button>
+                {error && (
+                  <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-md">
+                    <p className="text-red-800 text-sm">{error}</p>
+                  </div>
+                )}
               </CardContent>
             </Card>
 
