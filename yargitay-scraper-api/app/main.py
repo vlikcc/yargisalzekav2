@@ -140,9 +140,26 @@ async def search_yargitay_parallel(
         # Sonuçları unique hale getir (aynı case_number'a sahip olanları birleştir)
         unique_results = {}
         for result in all_results:
-            case_number = result.get("case_number", "unknown")
+            # ResultItem objesi ise dict'e çevir
+            if hasattr(result, 'model_dump'):
+                result_dict = result.model_dump()
+            elif hasattr(result, 'dict'):
+                result_dict = result.dict()
+            else:
+                result_dict = result
+            
+            case_number = result_dict.get("case_number", result_dict.get("esas_no", "unknown"))
             if case_number not in unique_results:
-                unique_results[case_number] = result
+                # API uyumluluğu için ek alanlar ekle
+                result_dict.update({
+                    "case_number": result_dict.get("esas_no", ""),
+                    "title": f"{result_dict.get('daire', '')} - {result_dict.get('karar_no', '')}",
+                    "content": result_dict.get("karar_metni", ""),
+                    "date": result_dict.get("karar_tarihi", ""),
+                    "court": result_dict.get("daire", ""),
+                    "url": f"https://karararama.yargitay.gov.tr/YargitayBilgiBankasiIstemciWeb/#{result_dict.get('esas_no', '')}"
+                })
+                unique_results[case_number] = result_dict
         
         final_results = list(unique_results.values())
         
