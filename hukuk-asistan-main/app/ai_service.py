@@ -12,7 +12,7 @@ class GeminiAIService:
     def __init__(self):
         """Gemini AI servisini başlatır"""
         genai.configure(api_key=settings.GEMINI_API_KEY)
-        self.model = genai.GenerativeModel('gemini-pro')
+        self.model = genai.GenerativeModel('gemini-2.5-pro')
         
     async def extract_keywords_from_case(self, case_text: str) -> List[str]:
         """
