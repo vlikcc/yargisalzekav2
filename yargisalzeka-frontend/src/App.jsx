@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Textarea } from '@/components/ui/textarea.jsx'
 import { Badge } from '@/components/ui/badge.jsx'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs.jsx'
-import { Brain, Search, FileText, Zap, CheckCircle, Star, Clock, Users } from 'lucide-react'
+import { Brain, Search, FileText, Zap, CheckCircle, Star, Clock, Users, Scale, Cpu, Target, Award } from 'lucide-react'
 import './App.css'
 
 function App() {
@@ -95,23 +95,47 @@ function App() {
   ]
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
+    <div className="min-h-screen hero-gradient">
       {/* Header */}
-      <header className="bg-white shadow-sm border-b">
+      <header className="bg-black/20 backdrop-blur-md border-b border-white/10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-6">
-            <div className="flex items-center space-x-3">
-              <Brain className="h-8 w-8 text-blue-600" />
+          <div className="flex justify-between items-center py-4">
+            <div className="flex items-center space-x-4">
+              <img 
+                src="/src/assets/yargisalzeka-logo.png" 
+                alt="Yargısal Zeka Logo" 
+                className="h-12 w-auto"
+              />
               <div>
-                <h1 className="text-2xl font-bold text-gray-900">YARGISAL ZEKA</h1>
-                <p className="text-sm text-gray-600">Yapay Zeka Destekli Yargıtay Kararı Arama Platformu</p>
+                <h1 className="text-2xl font-bold text-white">YARGISAL ZEKA</h1>
+                <p className="text-sm gold-text">Yapay Zeka Destekli Yargıtay Kararı Arama Platformu</p>
               </div>
             </div>
-            <nav className="flex space-x-8">
-              <Button variant="ghost" onClick={() => setActiveTab('search')}>Ana Sayfa</Button>
-              <Button variant="ghost" onClick={() => setActiveTab('pricing')}>Fiyatlandırma</Button>
-              <Button variant="ghost" onClick={() => setActiveTab('about')}>Hakkında</Button>
-              <Button>Giriş Yap</Button>
+            <nav className="flex space-x-6">
+              <Button 
+                variant="ghost" 
+                onClick={() => setActiveTab('search')}
+                className="text-white hover:text-yellow-400 hover:bg-white/10"
+              >
+                Ana Sayfa
+              </Button>
+              <Button 
+                variant="ghost" 
+                onClick={() => setActiveTab('pricing')}
+                className="text-white hover:text-yellow-400 hover:bg-white/10"
+              >
+                Fiyatlandırma
+              </Button>
+              <Button 
+                variant="ghost" 
+                onClick={() => setActiveTab('about')}
+                className="text-white hover:text-yellow-400 hover:bg-white/10"
+              >
+                Özellikler
+              </Button>
+              <Button className="btn-primary">
+                Giriş Yap
+              </Button>
             </nav>
           </div>
         </div>
@@ -119,31 +143,95 @@ function App() {
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="search">Akıllı Arama</TabsTrigger>
-            <TabsTrigger value="pricing">Abonelik Planları</TabsTrigger>
-            <TabsTrigger value="about">Platform Özellikleri</TabsTrigger>
+          <TabsList className="grid w-full grid-cols-3 bg-black/20 border border-white/10">
+            <TabsTrigger value="search" className="text-white data-[state=active]:bg-yellow-600 data-[state=active]:text-black">
+              Akıllı Arama
+            </TabsTrigger>
+            <TabsTrigger value="pricing" className="text-white data-[state=active]:bg-yellow-600 data-[state=active]:text-black">
+              Abonelik Planları
+            </TabsTrigger>
+            <TabsTrigger value="about" className="text-white data-[state=active]:bg-yellow-600 data-[state=active]:text-black">
+              Platform Özellikleri
+            </TabsTrigger>
           </TabsList>
 
           {/* Akıllı Arama Sekmesi */}
-          <TabsContent value="search" className="space-y-6">
-            <div className="text-center py-8">
-              <h2 className="text-4xl font-bold text-gray-900 mb-4">
-                Hukuk Araştırmalarında Devrim
+          <TabsContent value="search" className="space-y-8">
+            {/* Hero Section */}
+            <div className="text-center py-16 animate-fade-in-up">
+              <h2 className="hero-title mb-6">
+                HUKUK ARAŞTIRMALARINDA
+                <span className="block gold-gradient">DEVRİM</span>
               </h2>
-              <p className="text-xl text-gray-600 max-w-3xl mx-auto">
+              <p className="hero-subtitle max-w-4xl mx-auto mb-8">
                 Yapay zeka destekli platformumuz ile Yargıtay kararlarını saniyeler içinde bulun, 
                 analiz edin ve dilekçelerinize entegre edin.
               </p>
+              <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                <Button size="lg" className="btn-primary px-8 py-4 text-lg pulse-gold">
+                  <Brain className="mr-2 h-5 w-5" />
+                  Ücretsiz Deneyin
+                </Button>
+                <Button size="lg" className="btn-secondary px-8 py-4 text-lg">
+                  <FileText className="mr-2 h-5 w-5" />
+                  Demo İzleyin
+                </Button>
+              </div>
             </div>
 
-            <Card className="max-w-4xl mx-auto">
+            {/* Özellik Kartları */}
+            <div className="grid md:grid-cols-3 gap-8 mb-12">
+              <Card className="feature-card animate-fade-in-up">
+                <CardHeader className="text-center">
+                  <div className="mx-auto mb-4 p-3 bg-yellow-600 rounded-full w-16 h-16 flex items-center justify-center">
+                    <Brain className="h-8 w-8 text-black" />
+                  </div>
+                  <CardTitle className="text-white text-xl">AI Destekli Analiz</CardTitle>
+                </CardHeader>
+                <CardContent className="text-center">
+                  <p className="text-gray-300">
+                    Google Gemini AI ile olay metinlerinden otomatik anahtar kelime çıkarma ve karar analizi
+                  </p>
+                </CardContent>
+              </Card>
+
+              <Card className="feature-card animate-fade-in-up">
+                <CardHeader className="text-center">
+                  <div className="mx-auto mb-4 p-3 bg-blue-500 rounded-full w-16 h-16 flex items-center justify-center">
+                    <Zap className="h-8 w-8 text-white" />
+                  </div>
+                  <CardTitle className="text-white text-xl">Paralel Arama</CardTitle>
+                </CardHeader>
+                <CardContent className="text-center">
+                  <p className="text-gray-300">
+                    Çoklu anahtar kelimelerle eş zamanlı arama yaparak sonuçları 60x daha hızlı getirir
+                  </p>
+                </CardContent>
+              </Card>
+
+              <Card className="feature-card animate-fade-in-up">
+                <CardHeader className="text-center">
+                  <div className="mx-auto mb-4 p-3 bg-purple-500 rounded-full w-16 h-16 flex items-center justify-center">
+                    <Target className="h-8 w-8 text-white" />
+                  </div>
+                  <CardTitle className="text-white text-xl">Akıllı Puanlama</CardTitle>
+                </CardHeader>
+                <CardContent className="text-center">
+                  <p className="text-gray-300">
+                    Bulunan kararları olay metniyle ilişkisine göre puanlayarak %90 doğruluk oranı sağlar
+                  </p>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Arama Formu */}
+            <Card className="max-w-4xl mx-auto glass-card">
               <CardHeader>
-                <CardTitle className="flex items-center space-x-2">
-                  <Search className="h-5 w-5" />
+                <CardTitle className="flex items-center space-x-2 text-white">
+                  <Search className="h-5 w-5 text-yellow-400" />
                   <span>Olay Metninizi Girin</span>
                 </CardTitle>
-                <CardDescription>
+                <CardDescription className="text-gray-300">
                   Hukuki durumunuzu detaylı olarak açıklayın. AI sistemimiz otomatik olarak 
                   anahtar kelimeleri çıkaracak ve en alakalı Yargıtay kararlarını bulacak.
                 </CardDescription>
@@ -154,12 +242,12 @@ function App() {
                   value={caseText}
                   onChange={(e) => setCaseText(e.target.value)}
                   rows={6}
-                  className="w-full"
+                  className="w-full bg-white/10 border-white/20 text-white placeholder:text-gray-400"
                 />
                 <Button 
                   onClick={handleSmartSearch}
                   disabled={!caseText.trim() || isLoading}
-                  className="w-full"
+                  className="w-full btn-primary"
                   size="lg"
                 >
                   {isLoading ? (
@@ -175,8 +263,8 @@ function App() {
                   )}
                 </Button>
                 {error && (
-                  <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-md">
-                    <p className="text-red-800 text-sm">{error}</p>
+                  <div className="mt-4 p-4 bg-red-500/20 border border-red-500/30 rounded-md">
+                    <p className="text-red-200 text-sm">{error}</p>
                   </div>
                 )}
               </CardContent>
@@ -184,14 +272,14 @@ function App() {
 
             {/* Anahtar Kelimeler */}
             {keywords.length > 0 && (
-              <Card className="max-w-4xl mx-auto">
+              <Card className="max-w-4xl mx-auto glass-card">
                 <CardHeader>
-                  <CardTitle>Çıkarılan Anahtar Kelimeler</CardTitle>
+                  <CardTitle className="text-white">Çıkarılan Anahtar Kelimeler</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="flex flex-wrap gap-2">
                     {keywords.map((keyword, index) => (
-                      <Badge key={index} variant="secondary">
+                      <Badge key={index} className="bg-yellow-600 text-black hover:bg-yellow-500">
                         {keyword}
                       </Badge>
                     ))}
@@ -203,36 +291,36 @@ function App() {
             {/* Arama Sonuçları */}
             {searchResults.length > 0 && (
               <div className="max-w-4xl mx-auto space-y-4">
-                <h3 className="text-2xl font-bold text-gray-900">
+                <h3 className="text-2xl font-bold text-white">
                   Bulunan Yargıtay Kararları ({searchResults.length})
                 </h3>
                 {searchResults.map((result, index) => (
-                  <Card key={index} className="hover:shadow-lg transition-shadow">
+                  <Card key={index} className="glass-card hover:border-yellow-400/50 transition-all">
                     <CardHeader>
                       <div className="flex justify-between items-start">
-                        <CardTitle className="text-lg">{result.title || `Karar ${index + 1}`}</CardTitle>
+                        <CardTitle className="text-lg text-white">{result.title || `Karar ${index + 1}`}</CardTitle>
                         <div className="flex items-center space-x-2">
-                          <Badge variant={result.ai_score > 70 ? "default" : result.ai_score > 40 ? "secondary" : "outline"}>
+                          <Badge className={`${result.ai_score > 70 ? "bg-green-600" : result.ai_score > 40 ? "bg-yellow-600 text-black" : "bg-gray-600"}`}>
                             AI Skoru: {result.ai_score}/100
                           </Badge>
-                          {result.ai_score > 70 && <Star className="h-4 w-4 text-yellow-500" />}
+                          {result.ai_score > 70 && <Star className="h-4 w-4 text-yellow-400" />}
                         </div>
                       </div>
-                      <CardDescription>{result.ai_explanation}</CardDescription>
+                      <CardDescription className="text-gray-300">{result.ai_explanation}</CardDescription>
                     </CardHeader>
                     <CardContent>
-                      <p className="text-sm text-gray-600 mb-2">
+                      <p className="text-sm text-gray-300 mb-2">
                         <strong>Benzerlik:</strong> {result.ai_similarity}
                       </p>
-                      <p className="text-sm text-gray-800 line-clamp-3">
+                      <p className="text-sm text-gray-200 line-clamp-3">
                         {result.content?.substring(0, 300)}...
                       </p>
                       <div className="mt-4 flex space-x-2">
-                        <Button size="sm" variant="outline">
+                        <Button size="sm" className="btn-secondary">
                           <FileText className="mr-2 h-4 w-4" />
                           Detayları Gör
                         </Button>
-                        <Button size="sm" variant="outline">
+                        <Button size="sm" className="btn-primary">
                           Dilekçeye Ekle
                         </Button>
                       </div>
@@ -244,40 +332,40 @@ function App() {
           </TabsContent>
 
           {/* Abonelik Planları Sekmesi */}
-          <TabsContent value="pricing" className="space-y-6">
-            <div className="text-center py-8">
-              <h2 className="text-4xl font-bold text-gray-900 mb-4">Abonelik Planları</h2>
-              <p className="text-xl text-gray-600">
+          <TabsContent value="pricing" className="space-y-8">
+            <div className="text-center py-12">
+              <h2 className="hero-title mb-4">ABONELİK PLANLARI</h2>
+              <p className="hero-subtitle">
                 İhtiyacınıza uygun planı seçin ve hukuki araştırmalarınızı hızlandırın
               </p>
             </div>
 
             <div className="grid md:grid-cols-3 gap-8 max-w-6xl mx-auto">
               {subscriptionPlans.map((plan, index) => (
-                <Card key={index} className={`relative ${plan.popular ? 'border-blue-500 shadow-lg scale-105' : ''}`}>
+                <Card key={index} className={`feature-card relative ${plan.popular ? 'border-yellow-400 scale-105' : ''}`}>
                   {plan.popular && (
                     <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
-                      <Badge className="bg-blue-500">En Popüler</Badge>
+                      <Badge className="bg-yellow-600 text-black">En Popüler</Badge>
                     </div>
                   )}
                   <CardHeader className="text-center">
-                    <CardTitle className="text-2xl">{plan.name}</CardTitle>
-                    <div className="text-4xl font-bold text-blue-600">
+                    <CardTitle className="text-2xl text-white">{plan.name}</CardTitle>
+                    <div className="text-4xl font-bold gold-text">
                       {plan.price}
-                      <span className="text-lg text-gray-500">/{plan.period}</span>
+                      <span className="text-lg text-gray-400">/{plan.period}</span>
                     </div>
-                    <CardDescription className="text-lg">{plan.searches}</CardDescription>
+                    <CardDescription className="text-lg text-gray-300">{plan.searches}</CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <ul className="space-y-3">
                       {plan.features.map((feature, featureIndex) => (
                         <li key={featureIndex} className="flex items-center space-x-2">
-                          <CheckCircle className="h-5 w-5 text-green-500" />
-                          <span>{feature}</span>
+                          <CheckCircle className="h-5 w-5 text-green-400" />
+                          <span className="text-gray-300">{feature}</span>
                         </li>
                       ))}
                     </ul>
-                    <Button className="w-full" variant={plan.popular ? "default" : "outline"}>
+                    <Button className={`w-full ${plan.popular ? 'btn-primary' : 'btn-secondary'}`}>
                       Planı Seç
                     </Button>
                   </CardContent>
@@ -287,104 +375,118 @@ function App() {
           </TabsContent>
 
           {/* Platform Özellikleri Sekmesi */}
-          <TabsContent value="about" className="space-y-6">
-            <div className="text-center py-8">
-              <h2 className="text-4xl font-bold text-gray-900 mb-4">Platform Özellikleri</h2>
-              <p className="text-xl text-gray-600">
+          <TabsContent value="about" className="space-y-8">
+            <div className="text-center py-12">
+              <h2 className="hero-title mb-4">PLATFORM ÖZELLİKLERİ</h2>
+              <p className="hero-subtitle">
                 Hukuk profesyonellerinin ihtiyaçları için özel olarak tasarlanmış özellikler
               </p>
             </div>
 
-            <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
-              <Card className="text-center">
+            {/* Ana Özellikler */}
+            <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
+              <Card className="feature-card text-center">
                 <CardHeader>
-                  <Brain className="h-12 w-12 text-blue-600 mx-auto mb-4" />
-                  <CardTitle>Yapay Zeka Destekli Analiz</CardTitle>
+                  <img 
+                    src="/src/assets/ai-brain-analysis.png" 
+                    alt="AI Analiz" 
+                    className="w-20 h-20 mx-auto mb-4 rounded-lg"
+                  />
+                  <CardTitle className="text-white">Yapay Zeka Destekli Analiz</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <p className="text-gray-600">
+                  <p className="text-gray-300">
                     Google Gemini AI ile olay metinlerinden otomatik anahtar kelime çıkarma ve karar analizi
                   </p>
                 </CardContent>
               </Card>
 
-              <Card className="text-center">
+              <Card className="feature-card text-center">
                 <CardHeader>
-                  <Zap className="h-12 w-12 text-yellow-600 mx-auto mb-4" />
-                  <CardTitle>Paralel Arama Teknolojisi</CardTitle>
+                  <img 
+                    src="/src/assets/parallel-search-tech.png" 
+                    alt="Paralel Arama" 
+                    className="w-20 h-20 mx-auto mb-4 rounded-lg"
+                  />
+                  <CardTitle className="text-white">Paralel Arama Teknolojisi</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <p className="text-gray-600">
+                  <p className="text-gray-300">
                     Çoklu anahtar kelimelerle eş zamanlı arama yaparak sonuçları hızlı bir şekilde getirir
                   </p>
                 </CardContent>
               </Card>
 
-              <Card className="text-center">
+              <Card className="feature-card text-center">
                 <CardHeader>
-                  <Star className="h-12 w-12 text-purple-600 mx-auto mb-4" />
-                  <CardTitle>Akıllı Puanlama Sistemi</CardTitle>
+                  <img 
+                    src="/src/assets/smart-scoring-system.png" 
+                    alt="Akıllı Puanlama" 
+                    className="w-20 h-20 mx-auto mb-4 rounded-lg"
+                  />
+                  <CardTitle className="text-white">Akıllı Puanlama Sistemi</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <p className="text-gray-600">
+                  <p className="text-gray-300">
                     Bulunan kararları olay metniyle ilişkisine göre puanlayarak en alakalı sonuçları öne çıkarır
                   </p>
                 </CardContent>
               </Card>
 
-              <Card className="text-center">
+              <Card className="feature-card text-center">
                 <CardHeader>
-                  <FileText className="h-12 w-12 text-green-600 mx-auto mb-4" />
-                  <CardTitle>Otomatik Dilekçe Şablonları</CardTitle>
+                  <FileText className="h-16 w-16 text-green-400 mx-auto mb-4" />
+                  <CardTitle className="text-white">Otomatik Dilekçe Şablonları</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <p className="text-gray-600">
+                  <p className="text-gray-300">
                     Seçilen Yargıtay kararlarını referans alan dilekçe şablonları oluşturur
                   </p>
                 </CardContent>
               </Card>
             </div>
 
-            <Card className="max-w-4xl mx-auto">
+            {/* Sistem Avantajları */}
+            <Card className="max-w-6xl mx-auto glass-card">
               <CardHeader>
-                <CardTitle>Sistem Çalışma Prensibi</CardTitle>
+                <CardTitle className="text-white text-2xl text-center">Sistem Avantajları</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
                   <div className="text-center">
-                    <div className="bg-blue-100 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-4">
-                      <span className="text-2xl font-bold text-blue-600">1</span>
+                    <div className="bg-yellow-600 rounded-full w-20 h-20 flex items-center justify-center mx-auto mb-4">
+                      <span className="text-3xl font-bold text-black">60x</span>
                     </div>
-                    <h4 className="font-semibold mb-2">Olay Analizi</h4>
-                    <p className="text-sm text-gray-600">
-                      Kullanıcının girdiği olay metni, Google Gemini AI tarafından analiz edilir
+                    <h4 className="font-semibold mb-2 text-white">Daha Hızlı</h4>
+                    <p className="text-sm text-gray-300">
+                      Geleneksel yöntemlere göre 60 kat daha hızlı sonuç
                     </p>
                   </div>
                   <div className="text-center">
-                    <div className="bg-yellow-100 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-4">
-                      <span className="text-2xl font-bold text-yellow-600">2</span>
+                    <div className="bg-green-500 rounded-full w-20 h-20 flex items-center justify-center mx-auto mb-4">
+                      <span className="text-3xl font-bold text-white">90%</span>
                     </div>
-                    <h4 className="font-semibold mb-2">Paralel Arama</h4>
-                    <p className="text-sm text-gray-600">
-                      Çıkarılan anahtar kelimeler kullanılarak Yargıtay web sitesinde paralel arama yapılır
+                    <h4 className="font-semibold mb-2 text-white">Doğruluk Oranı</h4>
+                    <p className="text-sm text-gray-300">
+                      En alakalı kararları bulma başarı oranı
                     </p>
                   </div>
                   <div className="text-center">
-                    <div className="bg-purple-100 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-4">
-                      <span className="text-2xl font-bold text-purple-600">3</span>
+                    <div className="bg-blue-500 rounded-full w-20 h-20 flex items-center justify-center mx-auto mb-4">
+                      <span className="text-3xl font-bold text-white">5</span>
                     </div>
-                    <h4 className="font-semibold mb-2">Karar Analizi</h4>
-                    <p className="text-sm text-gray-600">
-                      Bulunan kararlar AI tarafından analiz edilir ve olay metniyle ilişkisine göre puanlanır
+                    <h4 className="font-semibold mb-2 text-white">Dakika</h4>
+                    <p className="text-sm text-gray-300">
+                      Kapsamlı araştırma için gereken süre
                     </p>
                   </div>
                   <div className="text-center">
-                    <div className="bg-green-100 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-4">
-                      <span className="text-2xl font-bold text-green-600">4</span>
+                    <div className="bg-purple-500 rounded-full w-20 h-20 flex items-center justify-center mx-auto mb-4">
+                      <Award className="h-10 w-10 text-white" />
                     </div>
-                    <h4 className="font-semibold mb-2">Dilekçe Hazırlama</h4>
-                    <p className="text-sm text-gray-600">
-                      En alakalı kararlar kullanılarak örnek dilekçe şablonu oluşturulur
+                    <h4 className="font-semibold mb-2 text-white">Premium Kalite</h4>
+                    <p className="text-sm text-gray-300">
+                      Enterprise seviyede güvenilirlik ve performans
                     </p>
                   </div>
                 </div>
@@ -395,45 +497,44 @@ function App() {
       </main>
 
       {/* Footer */}
-      <footer className="bg-gray-900 text-white py-12 mt-16">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <footer className="bg-black/30 border-t border-white/10 mt-16">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="grid md:grid-cols-4 gap-8">
             <div>
-              <div className="flex items-center space-x-2 mb-4">
-                <Brain className="h-6 w-6" />
-                <span className="text-xl font-bold">YARGISAL ZEKA</span>
-              </div>
-              <p className="text-gray-400">
-                Hukuk araştırmalarında devrim niteliğinde bir adım
+              <h3 className="text-white font-semibold mb-4">Yargısal Zeka</h3>
+              <p className="text-gray-400 text-sm">
+                Yapay zeka destekli hukuk araştırma platformu
               </p>
             </div>
             <div>
-              <h4 className="font-semibold mb-4">İletişim</h4>
-              <div className="space-y-2 text-gray-400">
-                <p>info@yargisalzeka.com</p>
-                <p>+90 (212) 555 1234</p>
-                <p>Levent, İstanbul</p>
-              </div>
+              <h4 className="text-white font-semibold mb-4">Ürün</h4>
+              <ul className="space-y-2 text-sm text-gray-400">
+                <li>Özellikler</li>
+                <li>Fiyatlandırma</li>
+                <li>API</li>
+              </ul>
             </div>
             <div>
-              <h4 className="font-semibold mb-4">Hızlı Linkler</h4>
-              <div className="space-y-2">
-                <a href="#" className="block text-gray-400 hover:text-white">Hakkımızda</a>
-                <a href="#" className="block text-gray-400 hover:text-white">Fiyatlandırma</a>
-                <a href="#" className="block text-gray-400 hover:text-white">Destek</a>
-                <a href="#" className="block text-gray-400 hover:text-white">API Dokümantasyonu</a>
-              </div>
+              <h4 className="text-white font-semibold mb-4">Destek</h4>
+              <ul className="space-y-2 text-sm text-gray-400">
+                <li>Yardım Merkezi</li>
+                <li>İletişim</li>
+                <li>Dokümantasyon</li>
+              </ul>
             </div>
             <div>
-              <h4 className="font-semibold mb-4">Ücretsiz Demo</h4>
-              <p className="text-gray-400 mb-4">
-                Platformumuzu ücretsiz olarak deneyin
-              </p>
-              <Button className="w-full">Demo İste</Button>
+              <h4 className="text-white font-semibold mb-4">Şirket</h4>
+              <ul className="space-y-2 text-sm text-gray-400">
+                <li>Hakkımızda</li>
+                <li>Gizlilik</li>
+                <li>Şartlar</li>
+              </ul>
             </div>
           </div>
-          <div className="border-t border-gray-800 mt-8 pt-8 text-center text-gray-400">
-            <p>&copy; 2024 Yargısal Zeka. Tüm hakları saklıdır.</p>
+          <div className="border-t border-white/10 mt-8 pt-8 text-center">
+            <p className="text-gray-400 text-sm">
+              © 2024 Yargısal Zeka. Tüm hakları saklıdır.
+            </p>
           </div>
         </div>
       </footer>
