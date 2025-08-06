@@ -1,6 +1,7 @@
 fastapi
 uvicorn[standard]
 pydantic-settings
+pydantic[email]
 loguru
 httpx  # n8n'e asenkron HTTP isteği yapmak için
 python-dotenv
