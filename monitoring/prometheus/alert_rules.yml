@@ -1,0 +1,93 @@
+groups:
+- name: yargisalzeka_alerts
+  rules:
+  
+  # API Health Alerts
+  - alert: APIDown
+    expr: up{job=~"main-api|scraper-api"} == 0
+    for: 1m
+    labels:
+      severity: critical
+    annotations:
+      summary: "API service is down"
+      description: "{{ $labels.job }} has been down for more than 1 minute."
+
+  # High Response Time
+  - alert: HighResponseTime
+    expr: http_request_duration_seconds_bucket{le="1.0"} / ignoring(le) http_request_duration_seconds_count < 0.95
+    for: 5m
+    labels:
+      severity: warning
+    annotations:
+      summary: "High response time detected"
+      description: "{{ $labels.job }} response time is high. Less than 95% of requests are completing within 1 second."
+
+  # High Error Rate
+  - alert: HighErrorRate
+    expr: rate(http_requests_total{status=~"5.."}[5m]) / rate(http_requests_total[5m]) > 0.05
+    for: 2m
+    labels:
+      severity: critical
+    annotations:
+      summary: "High error rate detected"
+      description: "{{ $labels.job }} error rate is {{ $value | humanizePercentage }} which is above 5%."
+
+  # Memory Usage
+  - alert: HighMemoryUsage
+    expr: (process_resident_memory_bytes / 1024 / 1024) > 500
+    for: 5m
+    labels:
+      severity: warning
+    annotations:
+      summary: "High memory usage"
+      description: "{{ $labels.job }} is using {{ $value }}MB of memory."
+
+  # Database Connection Issues
+  - alert: DatabaseConnectionFailed
+    expr: mongodb_connections_current == 0
+    for: 1m
+    labels:
+      severity: critical
+    annotations:
+      summary: "Database connection failed"
+      description: "No active MongoDB connections detected."
+
+  # Redis Connection Issues
+  - alert: RedisDown
+    expr: up{job="redis"} == 0
+    for: 1m
+    labels:
+      severity: warning
+    annotations:
+      summary: "Redis is down"
+      description: "Redis cache service is not responding."
+
+  # Selenium Grid Issues
+  - alert: SeleniumHubDown
+    expr: up{job="selenium-hub"} == 0
+    for: 2m
+    labels:
+      severity: warning
+    annotations:
+      summary: "Selenium Hub is down"
+      description: "Selenium Hub is not responding, web scraping may be affected."
+
+  # Disk Space
+  - alert: DiskSpaceLow
+    expr: (node_filesystem_avail_bytes{mountpoint="/"} / node_filesystem_size_bytes{mountpoint="/"}) * 100 < 20
+    for: 5m
+    labels:
+      severity: warning
+    annotations:
+      summary: "Low disk space"
+      description: "Disk space is {{ $value }}% full."
+
+  # Rate Limiting
+  - alert: HighRateLimitHits
+    expr: rate(rate_limit_exceeded_total[5m]) > 10
+    for: 1m
+    labels:
+      severity: warning
+    annotations:
+      summary: "High rate limit hits"
+      description: "Rate limiting is being triggered frequently: {{ $value }} hits per second."

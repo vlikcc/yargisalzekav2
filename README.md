@@ -129,21 +129,65 @@ curl -X POST http://localhost:8000/api/v1/workflow/complete-analysis \
 
 ## 📦 Deployment
 
-### Docker ile Production
+### Development
 ```bash
-# Production build
+# Development ortamı
 docker-compose up -d
 
 # Logları izleme
 docker-compose logs -f
 ```
 
+### Production
+```bash
+# Production deployment
+cp .env.prod.example .env.prod
+# .env.prod dosyasını production değerleri ile düzenleyin
+
+# SSL sertifikalarını yerleştirin
+mkdir ssl/
+cp your-ssl-cert.pem ssl/fullchain.pem
+cp your-ssl-key.pem ssl/privkey.pem
+
+# Production deployment
+./scripts/deploy.sh
+
+# Veya manuel
+docker-compose -f docker-compose.prod.yml up -d --build
+```
+
+### 🔧 Production Features
+- **SSL/TLS**: HTTPS with automatic redirect
+- **Monitoring**: Prometheus + Grafana dashboards
+- **Logging**: Centralized log aggregation
+- **Backup**: Automated backup scripts
+- **Health Checks**: Comprehensive health monitoring
+- **Security**: Production-grade security configuration
+
 ## 🔐 Güvenlik
 
-- API key'leri environment variables'da saklayın
-- Production'da CORS ayarlarını sınırlandırın
-- Rate limiting aktif
-- Input validation ile güvenlik
+### ✅ Implemented Security Features
+- **JWT Authentication**: Secure user authentication system
+- **Rate Limiting**: API endpoints protected with rate limiting
+- **Input Validation**: XSS and injection protection
+- **CORS Configuration**: Environment-based CORS settings
+- **Password Hashing**: bcrypt for secure password storage
+- **SSL/TLS Support**: HTTPS configuration for production
+- **Security Headers**: Comprehensive security headers in Nginx
+
+### 🔑 Authentication
+```bash
+# Login to get JWT token
+curl -X POST http://localhost:8000/api/v1/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email": "demo@yargisalzeka.com", "password": "demo123"}'
+
+# Use token in API requests
+curl -X POST http://localhost:8000/api/v1/ai/extract-keywords \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"case_text": "Your legal case text here"}'
+```
 
 ## 📊 Performans
 
@@ -154,7 +198,15 @@ docker-compose logs -f
 
 ## 🔄 Changelog
 
-### v2.0.0 (Güncel)
+### v2.1.0 (Production Ready - Güncel)
+- ✅ **Security**: JWT authentication, rate limiting, input validation
+- ✅ **Monitoring**: Prometheus metrics, Grafana dashboards, health checks
+- ✅ **Production**: SSL/TLS, production Docker configs, deployment scripts
+- ✅ **Testing**: Comprehensive test suite with pytest
+- ✅ **Backup**: Automated backup and recovery scripts
+- ✅ **Performance**: Optimized Docker images, caching, monitoring
+
+### v2.0.0
 - ✅ n8n bağımlılığı kaldırıldı
 - ✅ Mikroservis mimarisi implement edildi
 - ✅ Workflow servisi eklendi

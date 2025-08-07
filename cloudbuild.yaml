@@ -1,0 +1,147 @@
+# Google Cloud Build configuration for Yargısal Zeka
+steps:
+  # Build Main API for Cloud Run
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'build'
+      - '-t'
+      - 'gcr.io/$PROJECT_ID/yargisalzeka-main-api:$BUILD_ID'
+      - '-t'
+      - 'gcr.io/$PROJECT_ID/yargisalzeka-main-api:latest'
+      - '-f'
+      - 'gcp/main-api/Dockerfile'
+      - './hukuk-asistan-main'
+    id: 'build-main-api'
+
+  # Build Frontend for Cloud Run
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'build'
+      - '-t'
+      - 'gcr.io/$PROJECT_ID/yargisalzeka-frontend:$BUILD_ID'
+      - '-t'
+      - 'gcr.io/$PROJECT_ID/yargisalzeka-frontend:latest'
+      - '-f'
+      - 'gcp/frontend/Dockerfile'
+      - './yargisalzeka-frontend'
+    id: 'build-frontend'
+
+  # Push Main API image
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'push'
+      - 'gcr.io/$PROJECT_ID/yargisalzeka-main-api:$BUILD_ID'
+    waitFor: ['build-main-api']
+
+  # Push Frontend image
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'push'
+      - 'gcr.io/$PROJECT_ID/yargisalzeka-frontend:$BUILD_ID'
+    waitFor: ['build-frontend']
+
+  # Deploy Main API to Cloud Run
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: 'gcloud'
+    args:
+      - 'run'
+      - 'deploy'
+      - 'yargisalzeka-api'
+      - '--image'
+      - 'gcr.io/$PROJECT_ID/yargisalzeka-main-api:$BUILD_ID'
+      - '--region'
+      - 'europe-west1'
+      - '--platform'
+      - 'managed'
+      - '--allow-unauthenticated'
+      - '--memory'
+      - '2Gi'
+      - '--cpu'
+      - '2'
+      - '--max-instances'
+      - '100'
+      - '--min-instances'
+      - '1'
+      - '--concurrency'
+      - '80'
+      - '--timeout'
+      - '300'
+      - '--port'
+      - '8000'
+      - '--set-env-vars'
+      - 'ENVIRONMENT=production,GEMINI_API_KEY=${_GEMINI_API_KEY},JWT_SECRET_KEY=${_JWT_SECRET_KEY}'
+
+  # Deploy Frontend to Cloud Run
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: 'gcloud'
+    args:
+      - 'run'
+      - 'deploy'
+      - 'yargisalzeka-frontend'
+      - '--image'
+      - 'gcr.io/$PROJECT_ID/yargisalzeka-frontend:$BUILD_ID'
+      - '--region'
+      - 'europe-west1'
+      - '--platform'
+      - 'managed'
+      - '--allow-unauthenticated'
+      - '--memory'
+      - '512Mi'
+      - '--cpu'
+      - '1'
+      - '--max-instances'
+      - '50'
+      - '--min-instances'
+      - '0'
+      - '--concurrency'
+      - '1000'
+      - '--port'
+      - '80'
+
+  # Deploy Cloud Functions
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: 'gcloud'
+    args:
+      - 'functions'
+      - 'deploy'
+      - 'yargitay-scraper'
+      - '--source'
+      - './gcp/functions/scraper'
+      - '--entry-point'
+      - 'scrape_yargitay'
+      - '--runtime'
+      - 'python311'
+      - '--trigger'
+      - 'http'
+      - '--allow-unauthenticated'
+      - '--region'
+      - 'europe-west1'
+      - '--memory'
+      - '2GB'
+      - '--timeout'
+      - '540s'
+      - '--max-instances'
+      - '10'
+      - '--set-env-vars'
+      - 'ENVIRONMENT=production'
+
+# Images to push to Container Registry
+images:
+  - 'gcr.io/$PROJECT_ID/yargisalzeka-main-api:$BUILD_ID'
+  - 'gcr.io/$PROJECT_ID/yargisalzeka-main-api:latest'
+  - 'gcr.io/$PROJECT_ID/yargisalzeka-frontend:$BUILD_ID'
+  - 'gcr.io/$PROJECT_ID/yargisalzeka-frontend:latest'
+
+# Build options
+options:
+  logging: CLOUD_LOGGING_ONLY
+  machineType: 'E2_HIGHCPU_8'
+  
+# Substitutions for environment variables
+substitutions:
+  _GEMINI_API_KEY: 'your-gemini-api-key'
+  _JWT_SECRET_KEY: 'your-jwt-secret-key'
+
+# Timeout for the entire build
+timeout: '1200s'
+

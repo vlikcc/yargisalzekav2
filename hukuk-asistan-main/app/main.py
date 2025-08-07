@@ -1,12 +1,15 @@
 import sys
 import httpx
-from fastapi import FastAPI, Request, HTTPException
+from fastapi import FastAPI, Request, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
 
 from loguru import logger
 from contextlib import asynccontextmanager
 
 from .config import settings
+from .security import limiter, get_current_user, validate_input, get_client_ip, TokenData
 from .schemas import (
     KeywordExtractionRequest, KeywordExtractionResponse,
     DecisionAnalysisRequest, DecisionAnalysisResponse,
@@ -16,7 +19,9 @@ from .schemas import (
 )
 from .ai_service import gemini_service
 from .workflow_service import workflow_service
-from .database import init_database, close_database, db_manager, log_api_usage
+from .firestore_db import init_firestore_db, firestore_manager, log_api_usage
+from .auth import router as auth_router
+from .monitoring import get_metrics, monitoring_service, HealthChecker
 
 # --- Loglama ---
 logger.remove()
@@ -25,12 +30,12 @@ logger.add(sys.stdout, format="{time} {level} {message}", level=settings.LOG_LEV
 # --- Uygulama ---
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # MongoDB Atlas bağlantısını başlat
-    db_connected = await init_database()
+    # Firestore bağlantısını başlat
+    db_connected = await init_firestore_db()
     if db_connected:
-        logger.info("Main API MongoDB Atlas bağlantısı başarılı")
+        logger.info("Main API Firestore bağlantısı başarılı")
     else:
-        logger.warning("Main API MongoDB Atlas bağlantısı başarısız - cache modunda çalışılacak")
+        logger.warning("Main API Firestore bağlantısı başarısız - cache modunda çalışılacak")
     
     # httpx client'ı yapılandır
     timeout = httpx.Timeout(
@@ -40,39 +45,64 @@ async def lifespan(app: FastAPI):
         pool=5.0       # Pool timeout'u
     )
     app.state.http_client = httpx.AsyncClient(timeout=timeout)
+    
+    # Monitoring'i başlat
+    monitoring_service.start_monitoring()
+    
     logger.info("Yargısal Zeka API'si başlatıldı.")
     yield
     
     # Cleanup
+    monitoring_service.stop_monitoring()
     await app.state.http_client.aclose()
-    await close_database()
+    # Firestore connection automatically handles cleanup
     logger.info("Yargısal Zeka API'si kapatıldı.")
 
 app = FastAPI(
     title=settings.API_TITLE,
-    version="2.1.0",  # MongoDB Atlas versiyonu
+    version=settings.API_VERSION,
     description=settings.API_DESCRIPTION + " (MongoDB Atlas)",
-    lifespan=lifespan
+    lifespan=lifespan,
+    docs_url="/docs" if not settings.is_production else None,  # Production'da docs gizle
+    redoc_url="/redoc" if not settings.is_production else None
 )
 
-# CORS middleware ekle
+# Rate limiter'ı app'e ekle
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+# CORS middleware ekle - güvenli ayarlar
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Üretimde spesifik domain'ler belirtin
+    allow_origins=settings.cors_origins,  # Production'da güvenli origins
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE"],
     allow_headers=["*"],
+    max_age=3600,  # Preflight cache süresi
 )
+
+# Auth router'ı ekle
+app.include_router(auth_router)
 
 # --- Health Check ---
 @app.get("/health")
 async def health_check():
-    """API sağlık kontrolü"""
+    """Temel sağlık kontrolü"""
     return {
         "status": "healthy",
         "service": "Yargısal Zeka API",
         "version": settings.API_VERSION
     }
+
+@app.get("/health/detailed")
+async def detailed_health_check():
+    """Detaylı sağlık kontrolü"""
+    return await HealthChecker.get_comprehensive_health()
+
+@app.get("/metrics")
+async def metrics():
+    """Prometheus metrics endpoint"""
+    return await get_metrics()
 
 @app.get("/")
 async def root():
@@ -86,23 +116,38 @@ async def root():
 # --- AI Mikroservisleri ---
 
 @app.post("/api/v1/ai/extract-keywords", response_model=KeywordExtractionResponse)
-async def extract_keywords(request: KeywordExtractionRequest):
+@limiter.limit("10/minute")  # Rate limiting
+async def extract_keywords(
+    request: Request,
+    keyword_request: KeywordExtractionRequest,
+    current_user: TokenData = Depends(get_current_user)
+):
     """
     Olay metninden hukuki anahtar kelimeleri çıkarır
+    Kimlik doğrulaması gerekli
     """
     try:
-        keywords = await gemini_service.extract_keywords_from_case(request.case_text)
+        # Input validation
+        validated_text = validate_input(keyword_request.case_text, max_length=5000)
+        
+        # API usage logging
+        client_ip = get_client_ip(request)
+        logger.info(f"Anahtar kelime çıkarma isteği - User: {current_user.user_id}, IP: {client_ip}")
+        
+        keywords = await gemini_service.extract_keywords_from_case(validated_text)
         return KeywordExtractionResponse(
             keywords=keywords,
             success=True,
             message=f"{len(keywords)} anahtar kelime başarıyla çıkarıldı"
         )
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Anahtar kelime çıkarma hatası: {e}")
         return KeywordExtractionResponse(
             keywords=[],
             success=False,
-            message=f"Hata: {str(e)}"
+            message="Anahtar kelime çıkarma sırasında bir hata oluştu"
         )
 
 @app.post("/api/v1/ai/analyze-decision", response_model=DecisionAnalysisResponse)

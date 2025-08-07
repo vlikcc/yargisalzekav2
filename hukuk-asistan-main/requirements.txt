@@ -7,6 +7,24 @@ httpx  # n8n'e asenkron HTTP isteği yapmak için
 python-dotenv
 jinja2
 google-generativeai  # Google Gemini AI
-motor  # Async MongoDB driver
-pymongo  # MongoDB driver
-beanie  # ODM for MongoDB
+# Firestore is included in google-cloud-firestore above
+# Google Cloud dependencies
+google-cloud-firestore
+google-cloud-secret-manager
+google-cloud-storage
+# Security dependencies
+PyJWT
+bcrypt
+slowapi
+cryptography
+python-multipart
+# Production dependencies
+gunicorn
+redis
+prometheus-client
+psutil
+# Testing dependencies
+pytest
+pytest-asyncio
+pytest-cov
+httpx
