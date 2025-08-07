@@ -15,6 +15,27 @@ function App() {
   const [error, setError] = useState('')
   const [activeTab, setActiveTab] = useState('search')
 
+  // Buton fonksiyonları
+  const handleLogin = () => {
+    alert('Giriş yapma özelliği yakında eklenecek!')
+    // TODO: Login modal veya sayfasına yönlendirme
+  }
+
+  const handleFreeTrial = () => {
+    alert('Ücretsiz deneme için kayıt olun!')
+    // TODO: Kayıt modal'ı veya sayfasına yönlendirme
+  }
+
+  const handleWatchDemo = () => {
+    alert('Demo video yakında eklenecek!')
+    // TODO: Demo video modal'ı veya YouTube link'i
+  }
+
+  const handleSelectPlan = (planName) => {
+    alert(`${planName} seçildi! Ödeme sayfasına yönlendiriliyorsunuz...`)
+    // TODO: Ödeme sayfasına yönlendirme veya modal
+  }
+
   const handleSmartSearch = async () => {
     if (!caseText.trim()) return
     
@@ -133,7 +154,7 @@ function App() {
               >
                 Özellikler
               </Button>
-              <Button className="btn-primary">
+              <Button className="btn-primary" onClick={handleLogin}>
                 Giriş Yap
               </Button>
             </nav>
@@ -168,11 +189,11 @@ function App() {
                 analiz edin ve dilekçelerinize entegre edin.
               </p>
               <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                <Button size="lg" className="btn-primary px-8 py-4 text-lg pulse-gold">
+                <Button size="lg" className="btn-primary px-8 py-4 text-lg pulse-gold" onClick={handleFreeTrial}>
                   <Brain className="mr-2 h-5 w-5" />
                   Ücretsiz Deneyin
                 </Button>
-                <Button size="lg" className="btn-secondary px-8 py-4 text-lg">
+                <Button size="lg" className="btn-secondary px-8 py-4 text-lg" onClick={handleWatchDemo}>
                   <FileText className="mr-2 h-5 w-5" />
                   Demo İzleyin
                 </Button>
@@ -365,7 +386,10 @@ function App() {
                         </li>
                       ))}
                     </ul>
-                    <Button className={`w-full ${plan.popular ? 'btn-primary' : 'btn-secondary'}`}>
+                    <Button 
+                      className={`w-full ${plan.popular ? 'btn-primary' : 'btn-secondary'}`}
+                      onClick={() => handleSelectPlan(plan.name)}
+                    >
                       Planı Seç
                     </Button>
                   </CardContent>
