@@ -52,15 +52,15 @@ async def register_user(request: Request, user_data: UserRegister):
         # Şifreyi hashle
         hashed_password = get_password_hash(user_data.password)
         
-        # Firestore'a kullanıcı kaydet
-        user_id = await firestore_manager.create_user(
+        # Firestore'a kullanıcı kaydet ve ücretsiz deneme paketi ata
+        user_id = await firestore_manager.create_user_with_trial(
             email=user_data.email,
             hashed_password=hashed_password,
             full_name=user_data.full_name
         )
         
         return {
-            "message": "Kullanıcı başarıyla kaydedildi",
+            "message": "Kullanıcı başarıyla kaydedildi. 5 aramalık ücretsiz deneme paketiniz 3 gün süreyle aktif edildi!",
             "user_id": user_id,
             "email": user_data.email,
             "status": "success"

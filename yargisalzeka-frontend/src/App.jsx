@@ -4,26 +4,40 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Textarea } from '@/components/ui/textarea.jsx'
 import { Badge } from '@/components/ui/badge.jsx'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs.jsx'
-import { Brain, Search, FileText, Zap, CheckCircle, Star, Clock, Users, Scale, Cpu, Target, Award } from 'lucide-react'
+import { Brain, Search, FileText, Zap, CheckCircle, Star, Clock, Users, Scale, Cpu, Target, Award, User } from 'lucide-react'
+import AuthModal from './components/AuthModal.jsx'
+import UserDashboard from './components/UserDashboard.jsx'
+import { AuthProvider, useAuth } from './hooks/useAuth.js'
+import { apiService, ApiError } from './services/api.js'
 import './App.css'
 
-function App() {
+function AppContent() {
   const [caseText, setCaseText] = useState('')
   const [searchResults, setSearchResults] = useState([])
   const [keywords, setKeywords] = useState([])
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
   const [activeTab, setActiveTab] = useState('search')
+  const [authModal, setAuthModal] = useState({ isOpen: false, defaultTab: 'login' })
+  const [showUserDashboard, setShowUserDashboard] = useState(false)
+
+  const { user, isAuthenticated, getAuthHeaders } = useAuth()
 
   // Buton fonksiyonları
   const handleLogin = () => {
-    alert('Giriş yapma özelliği yakında eklenecek!')
-    // TODO: Login modal veya sayfasına yönlendirme
+    if (isAuthenticated()) {
+      setShowUserDashboard(true)
+    } else {
+      setAuthModal({ isOpen: true, defaultTab: 'login' })
+    }
   }
 
   const handleFreeTrial = () => {
-    alert('Ücretsiz deneme için kayıt olun!')
-    // TODO: Kayıt modal'ı veya sayfasına yönlendirme
+    if (isAuthenticated()) {
+      setShowUserDashboard(true)
+    } else {
+      setAuthModal({ isOpen: true, defaultTab: 'register' })
+    }
   }
 
   const handleWatchDemo = () => {
@@ -39,35 +53,41 @@ function App() {
   const handleSmartSearch = async () => {
     if (!caseText.trim()) return
     
+    // Check if user is authenticated
+    if (!isAuthenticated()) {
+      setError('Arama yapmak için giriş yapmanız gerekiyor.')
+      setAuthModal({ isOpen: true, defaultTab: 'login' })
+      return
+    }
+    
     setIsLoading(true)
     setError('')
+    
     try {
-      const response = await fetch('/api/v1/ai/smart-search', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          case_text: caseText,
-          max_results: 10
-        })
-      })
+      const response = await apiService.smartSearch(caseText, 10, getAuthHeaders())
       
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`)
-      }
-      
-      const data = await response.json()
-      if (data.success) {
-        setKeywords(data.keywords)
-        setSearchResults(data.analyzed_results)
+      if (response.success) {
+        setKeywords(response.keywords || [])
+        setSearchResults(response.analyzed_results || [])
         setError('')
       } else {
-        setError(data.message || 'Arama sırasında bir hata oluştu')
+        setError(response.message || 'Arama sırasında bir hata oluştu')
       }
     } catch (error) {
       console.error('Arama hatası:', error)
-      setError('Sunucuya bağlanırken bir hata oluştu. Lütfen daha sonra tekrar deneyin.')
+      
+      if (error instanceof ApiError) {
+        if (error.isAuthError()) {
+          setError('Oturum süreniz dolmuş. Lütfen tekrar giriş yapın.')
+          setAuthModal({ isOpen: true, defaultTab: 'login' })
+        } else if (error.isUsageLimitError()) {
+          setError(error.getUserMessage())
+        } else {
+          setError(error.getUserMessage())
+        }
+      } else {
+        setError('Sunucuya bağlanırken bir hata oluştu. Lütfen daha sonra tekrar deneyin.')
+      }
     } finally {
       setIsLoading(false)
     }
@@ -155,7 +175,14 @@ function App() {
                 Özellikler
               </Button>
               <Button className="btn-primary" onClick={handleLogin}>
-                Giriş Yap
+                {isAuthenticated() ? (
+                  <div className="flex items-center space-x-2">
+                    <User className="h-4 w-4" />
+                    <span>{user?.full_name?.split(' ')[0] || 'Kullanıcı'}</span>
+                  </div>
+                ) : (
+                  'Giriş Yap'
+                )}
               </Button>
             </nav>
           </div>
@@ -562,7 +589,28 @@ function App() {
           </div>
         </div>
       </footer>
+
+      {/* Auth Modal */}
+      <AuthModal 
+        isOpen={authModal.isOpen}
+        onClose={() => setAuthModal({ isOpen: false, defaultTab: 'login' })}
+        defaultTab={authModal.defaultTab}
+      />
+
+      {/* User Dashboard */}
+      {showUserDashboard && (
+        <UserDashboard onClose={() => setShowUserDashboard(false)} />
+      )}
     </div>
+  )
+}
+
+// Main App component with AuthProvider
+function App() {
+  return (
+    <AuthProvider>
+      <AppContent />
+    </AuthProvider>
   )
 }
 

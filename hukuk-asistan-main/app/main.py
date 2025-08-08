@@ -22,6 +22,7 @@ from .workflow_service import workflow_service
 from .firestore_db import init_firestore_db, firestore_manager, log_api_usage
 from .auth import router as auth_router
 from .monitoring import get_metrics, monitoring_service, HealthChecker
+from .usage_middleware import check_usage_limits
 
 # --- Loglama ---
 logger.remove()
@@ -80,6 +81,11 @@ app.add_middleware(
     allow_headers=["*"],
     max_age=3600,  # Preflight cache süresi
 )
+
+# Usage tracking middleware ekle
+@app.middleware("http")
+async def usage_tracking_middleware(request: Request, call_next):
+    return await check_usage_limits(request, call_next)
 
 # Auth router'ı ekle
 app.include_router(auth_router)
@@ -341,4 +347,36 @@ def _get_mock_search_results():
             "url": "https://karararama.yargitay.gov.tr/karar3"
         }
     ]
+
+
+# --- User Usage Endpoints ---
+@app.get("/api/v1/user/usage")
+@limiter.limit("30/minute")
+async def get_user_usage(request: Request, current_user: dict = Depends(get_current_user)):
+    """Get current user's usage statistics"""
+    try:
+        from .usage_middleware import get_user_usage_info
+        
+        user_id = current_user.get('id')
+        if not user_id:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="User ID not found"
+            )
+        
+        usage_info = await get_user_usage_info(user_id)
+        
+        return {
+            "status": "success",
+            "data": usage_info
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error getting user usage: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Kullanım bilgileri alınırken bir hata oluştu"
+        )
 

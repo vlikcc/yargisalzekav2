@@ -60,6 +60,40 @@ class FirestoreManager:
         except Exception as e:
             logger.error(f"Error creating user: {e}")
             raise
+
+    async def create_user_with_trial(self, email: str, hashed_password: str, full_name: str) -> str:
+        """Create a new user with trial package in Firestore"""
+        try:
+            user_ref = self.client.collection('users').document()
+            
+            # Trial başlangıç ve bitiş tarihleri (3 gün)
+            trial_start = datetime.utcnow()
+            trial_end = trial_start + timedelta(days=3)
+            
+            user_data = {
+                'email': email,
+                'hashed_password': hashed_password,
+                'full_name': full_name,
+                'subscription_plan': 'trial',
+                'created_at': firestore.SERVER_TIMESTAMP,
+                'updated_at': firestore.SERVER_TIMESTAMP,
+                'is_active': True,
+                # Trial package fields
+                'trial_start_date': trial_start,
+                'trial_end_date': trial_end,
+                'trial_searches_limit': 5,
+                'trial_searches_used': 0,
+                'is_trial_active': True,
+                'monthly_search_limit': 5,
+                'monthly_searches_used': 0,
+                'last_search_reset': trial_start
+            }
+            user_ref.set(user_data)
+            logger.info(f"User with trial package created with ID: {user_ref.id}")
+            return user_ref.id
+        except Exception as e:
+            logger.error(f"Error creating user with trial: {e}")
+            raise
     
     async def get_user_by_email(self, email: str) -> Optional[Dict[str, Any]]:
         """Get user by email"""
@@ -337,4 +371,127 @@ async def log_api_usage(user_id: str, endpoint: str, request_data: Dict[str, Any
         status_code=200,
         response_time=None
     )
+
+
+    # Usage Tracking Methods
+    async def check_user_search_limit(self, user_id: str) -> Dict[str, Any]:
+        """Check if user can perform a search based on their limits"""
+        try:
+            user_data = await self.get_user_by_id(user_id)
+            if not user_data:
+                return {"can_search": False, "reason": "User not found"}
+            
+            current_time = datetime.utcnow()
+            
+            # Check if trial is active and not expired
+            if user_data.get('subscription_plan') == 'trial':
+                trial_end = user_data.get('trial_end_date')
+                if trial_end and current_time > trial_end:
+                    # Trial expired, deactivate it
+                    await self.deactivate_trial(user_id)
+                    return {"can_search": False, "reason": "Trial period expired"}
+                
+                trial_used = user_data.get('trial_searches_used', 0)
+                trial_limit = user_data.get('trial_searches_limit', 5)
+                
+                if trial_used >= trial_limit:
+                    return {"can_search": False, "reason": "Trial search limit reached"}
+                
+                return {
+                    "can_search": True, 
+                    "remaining_searches": trial_limit - trial_used,
+                    "plan": "trial"
+                }
+            
+            # Check monthly limits for other plans
+            monthly_used = user_data.get('monthly_searches_used', 0)
+            monthly_limit = user_data.get('monthly_search_limit', 0)
+            
+            if monthly_limit > 0 and monthly_used >= monthly_limit:
+                return {"can_search": False, "reason": "Monthly search limit reached"}
+            
+            return {
+                "can_search": True,
+                "remaining_searches": monthly_limit - monthly_used if monthly_limit > 0 else "unlimited",
+                "plan": user_data.get('subscription_plan', 'free')
+            }
+            
+        except Exception as e:
+            logger.error(f"Error checking user search limit: {e}")
+            return {"can_search": False, "reason": "System error"}
+
+    async def increment_user_search_usage(self, user_id: str) -> bool:
+        """Increment user's search usage count"""
+        try:
+            user_ref = self.client.collection('users').document(user_id)
+            user_data = await self.get_user_by_id(user_id)
+            
+            if not user_data:
+                return False
+            
+            # Update trial usage if on trial
+            if user_data.get('subscription_plan') == 'trial':
+                trial_used = user_data.get('trial_searches_used', 0)
+                user_ref.update({
+                    'trial_searches_used': trial_used + 1,
+                    'updated_at': firestore.SERVER_TIMESTAMP
+                })
+            else:
+                # Update monthly usage
+                monthly_used = user_data.get('monthly_searches_used', 0)
+                user_ref.update({
+                    'monthly_searches_used': monthly_used + 1,
+                    'updated_at': firestore.SERVER_TIMESTAMP
+                })
+            
+            logger.info(f"Search usage incremented for user: {user_id}")
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error incrementing search usage: {e}")
+            return False
+
+    async def deactivate_trial(self, user_id: str) -> bool:
+        """Deactivate trial for a user"""
+        try:
+            user_ref = self.client.collection('users').document(user_id)
+            user_ref.update({
+                'is_trial_active': False,
+                'subscription_plan': 'free',
+                'updated_at': firestore.SERVER_TIMESTAMP
+            })
+            logger.info(f"Trial deactivated for user: {user_id}")
+            return True
+        except Exception as e:
+            logger.error(f"Error deactivating trial: {e}")
+            return False
+
+    async def get_user_usage_stats(self, user_id: str) -> Dict[str, Any]:
+        """Get user's usage statistics"""
+        try:
+            user_data = await self.get_user_by_id(user_id)
+            if not user_data:
+                return {}
+            
+            stats = {
+                "subscription_plan": user_data.get('subscription_plan', 'free'),
+                "is_trial_active": user_data.get('is_trial_active', False),
+                "monthly_searches_used": user_data.get('monthly_searches_used', 0),
+                "monthly_search_limit": user_data.get('monthly_search_limit', 0)
+            }
+            
+            # Add trial specific stats if applicable
+            if user_data.get('subscription_plan') == 'trial':
+                stats.update({
+                    "trial_searches_used": user_data.get('trial_searches_used', 0),
+                    "trial_searches_limit": user_data.get('trial_searches_limit', 5),
+                    "trial_start_date": user_data.get('trial_start_date'),
+                    "trial_end_date": user_data.get('trial_end_date')
+                })
+            
+            return stats
+            
+        except Exception as e:
+            logger.error(f"Error getting user usage stats: {e}")
+            return {}
 
