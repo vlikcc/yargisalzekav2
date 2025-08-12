@@ -25,9 +25,14 @@ class Settings(BaseSettings):
     JWT_ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
     
-    # CORS ayarları
-    ALLOWED_HOSTS: List[str] = ["localhost", "127.0.0.1"]
-    CORS_ORIGINS: List[str] = ["http://localhost:3000", "http://localhost:5173"]
+    # CORS ayarları - Production'da sadece yargisalzeka.com
+    ALLOWED_HOSTS: List[str] = ["localhost", "127.0.0.1", "yargisalzeka.com", "www.yargisalzeka.com"]
+    CORS_ORIGINS: List[str] = [
+        "http://localhost:3000", 
+        "http://localhost:5173",
+        "https://yargisalzeka.com",
+        "https://www.yargisalzeka.com"
+    ]
     
     # Rate limiting
     RATE_LIMIT_REQUESTS: int = 100
@@ -48,7 +53,11 @@ class Settings(BaseSettings):
     @property
     def cors_origins(self) -> List[str]:
         if self.is_production:
-            return [origin for origin in self.CORS_ORIGINS if not origin.startswith("http://localhost")]
+            # Production'da sadece yargisalzeka.com domain'lerini kabul et
+            return [
+                "https://yargisalzeka.com",
+                "https://www.yargisalzeka.com"
+            ]
         return self.CORS_ORIGINS
 
 settings = Settings()

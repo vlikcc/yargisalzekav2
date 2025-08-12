@@ -1,23 +1,51 @@
 version: '3.8'
 
 services:
-  # Ana Ürün API'si (Beyin) - MongoDB Atlas
-  main-api:
+  # Backend API (Ana Ürün API'si)
+  backend:
     build:
       context: ./hukuk-asistan-main
+      dockerfile: Dockerfile
     ports:
       - "8000:8000"
-    env_file:
-      - .env
+    environment:
+      - ENVIRONMENT=production
+      - PYTHONUNBUFFERED=1
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - GCP_PROJECT_ID=${GCP_PROJECT_ID}
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY}
+      - SCRAPER_API_URL=http://scraper-api:8001
+    volumes:
+      - ./hukuk-asistan-main/logs:/code/logs
     depends_on:
       - scraper-api
-    environment:
-      - SCRAPER_API_URL=http://scraper-api:8001
-      - MONGODB_CONNECTION_STRING=${MONGODB_CONNECTION_STRING}
-      - MONGODB_DATABASE_NAME=${MONGODB_DATABASE_NAME:-yargisalzeka}
-      - GEMINI_API_KEY=${GEMINI_API_KEY}
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
 
-  # Scraper API (İşçi) - MongoDB Atlas
+  # Frontend
+  frontend:
+    build:
+      context: ./yargisalzeka-frontend
+      dockerfile: Dockerfile
+    ports:
+      - "80:80"
+    environment:
+      - VITE_API_BASE_URL=http://backend:8000
+    depends_on:
+      - backend
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Scraper API (İşçi)
   scraper-api:
     build:
       context: ./yargitay-scraper-api
@@ -31,15 +59,23 @@ services:
       - MONGODB_CONNECTION_STRING=${MONGODB_CONNECTION_STRING}
       - MONGODB_DATABASE_NAME=${MONGODB_DATABASE_NAME:-yargisalzeka}
       - SELENIUM_GRID_URL=http://selenium-hub:4444/wd/hub
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
-  # Selenium Servisleri
+  # Selenium Hub
   selenium-hub:
     image: selenium/hub:4.11.0
     ports:
       - "4442:4442"
       - "4443:4443"
       - "4444:4444"
+    restart: unless-stopped
 
+  # Chrome Node
   chrome-node:
     image: selenium/node-chrome:4.11.0
     depends_on:
@@ -52,3 +88,12 @@ services:
     ports:
       - "7900:7900"  # VNC web interface
     shm_size: '2g'
+    restart: unless-stopped
+
+volumes:
+  logs:
+    driver: local
+
+networks:
+  default:
+    driver: bridge

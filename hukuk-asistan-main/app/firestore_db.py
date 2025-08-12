@@ -78,7 +78,7 @@ class FirestoreManager:
                 'created_at': firestore.SERVER_TIMESTAMP,
                 'updated_at': firestore.SERVER_TIMESTAMP,
                 'is_active': True,
-                # Trial package fields
+                # Trial package fields with PREMIUM features
                 'trial_start_date': trial_start,
                 'trial_end_date': trial_end,
                 'trial_searches_limit': 5,
@@ -86,10 +86,17 @@ class FirestoreManager:
                 'is_trial_active': True,
                 'monthly_search_limit': 5,
                 'monthly_searches_used': 0,
-                'last_search_reset': trial_start
+                'last_search_reset': trial_start,
+                # Premium features for trial users
+                'has_premium_features': True,
+                'can_generate_petitions': True,
+                'can_read_full_decisions': True,
+                'can_export_pdf': True,
+                'priority_support': True,
+                'api_access': True
             }
             user_ref.set(user_data)
-            logger.info(f"User with trial package created with ID: {user_ref.id}")
+            logger.info(f"User with premium trial package created with ID: {user_ref.id}")
             return user_ref.id
         except Exception as e:
             logger.error(f"Error creating user with trial: {e}")
@@ -494,4 +501,70 @@ async def log_api_usage(user_id: str, endpoint: str, request_data: Dict[str, Any
         except Exception as e:
             logger.error(f"Error getting user usage stats: {e}")
             return {}
+
+
+    
+    # Search History Management
+    async def save_search_to_history(self, user_id: str, search_data: Dict[str, Any]) -> str:
+        """Save search to user's history"""
+        try:
+            search_ref = self.client.collection('search_history').document()
+            
+            history_data = {
+                'user_id': user_id,
+                'case_text': search_data.get('case_text', ''),
+                'keywords': search_data.get('keywords', []),
+                'results_count': search_data.get('results_count', 0),
+                'ai_score': search_data.get('max_ai_score', 0),
+                'created_at': firestore.SERVER_TIMESTAMP,
+                'id': search_ref.id
+            }
+            
+            search_ref.set(history_data)
+            logger.info(f"Search saved to history with ID: {search_ref.id}")
+            return search_ref.id
+        except Exception as e:
+            logger.error(f"Error saving search to history: {e}")
+            raise
+    
+    async def get_user_search_history(self, user_id: str, limit: int = 50) -> List[Dict[str, Any]]:
+        """Get user's search history"""
+        try:
+            history_ref = self.client.collection('search_history')
+            query = history_ref.where('user_id', '==', user_id) \
+                              .order_by('created_at', direction=firestore.Query.DESCENDING) \
+                              .limit(limit)
+            
+            docs = query.stream()
+            history = []
+            
+            for doc in docs:
+                history_data = doc.to_dict()
+                history_data['id'] = doc.id
+                history.append(history_data)
+            
+            return history
+        except Exception as e:
+            logger.error(f"Error getting user search history: {e}")
+            return []
+    
+    async def delete_user_search(self, user_id: str, search_id: str) -> bool:
+        """Delete a specific search from user's history"""
+        try:
+            search_ref = self.client.collection('search_history').document(search_id)
+            search_doc = search_ref.get()
+            
+            if not search_doc.exists:
+                return False
+            
+            search_data = search_doc.to_dict()
+            if search_data.get('user_id') != user_id:
+                return False  # User can only delete their own searches
+            
+            search_ref.delete()
+            logger.info(f"Search {search_id} deleted from history")
+            return True
+        except Exception as e:
+            logger.error(f"Error deleting search from history: {e}")
+            return False
 

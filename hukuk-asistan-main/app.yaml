@@ -1,0 +1,52 @@
+runtime: python311
+
+# Instance configuration
+instance_class: F2
+automatic_scaling:
+  min_instances: 1
+  max_instances: 10
+  target_cpu_utilization: 0.6
+
+# Environment variables
+env_variables:
+  ENVIRONMENT: "production"
+  PYTHONUNBUFFERED: "1"
+  # Add your environment variables here
+  # GEMINI_API_KEY: "your-gemini-api-key"
+  # GCP_PROJECT_ID: "your-project-id"
+  # JWT_SECRET_KEY: "your-jwt-secret-key"
+
+# Health check configuration
+readiness_check:
+  path: "/health"
+  check_interval_sec: 5
+  timeout_sec: 4
+  failure_threshold: 2
+  success_threshold: 2
+  app_start_timeout_sec: 300
+
+liveness_check:
+  path: "/health"
+  check_interval_sec: 30
+  timeout_sec: 4
+  failure_threshold: 2
+  success_threshold: 2
+
+# Network settings
+network:
+  forwarded_ports:
+    - 8000
+
+# Resource limits
+resources:
+  cpu: 1
+  memory_gb: 2
+  disk_size_gb: 10
+
+# Handlers
+handlers:
+- url: /.*
+  script: auto
+  secure: always
+  redirect_http_response_code: 301
+

@@ -4,9 +4,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Textarea } from '@/components/ui/textarea.jsx'
 import { Badge } from '@/components/ui/badge.jsx'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs.jsx'
-import { Brain, Search, FileText, Zap, CheckCircle, Star, Clock, Users, Scale, Cpu, Target, Award, User } from 'lucide-react'
+import { Brain, Search, FileText, Zap, CheckCircle, Star, Clock, Users, Scale, Cpu, Target, Award, User, Eye } from 'lucide-react'
 import AuthModal from './components/AuthModal.jsx'
 import UserDashboard from './components/UserDashboard.jsx'
+import DecisionDetailModal from './components/DecisionDetailModal.jsx'
 import { AuthProvider, useAuth } from './hooks/useAuth.js'
 import { apiService, ApiError } from './services/api.js'
 import './App.css'
@@ -20,6 +21,7 @@ function AppContent() {
   const [activeTab, setActiveTab] = useState('search')
   const [authModal, setAuthModal] = useState({ isOpen: false, defaultTab: 'login' })
   const [showUserDashboard, setShowUserDashboard] = useState(false)
+  const [decisionModal, setDecisionModal] = useState({ isOpen: false, decisionId: null, decisionTitle: '' })
 
   const { user, isAuthenticated, getAuthHeaders } = useAuth()
 
@@ -42,12 +44,19 @@ function AppContent() {
 
   const handleWatchDemo = () => {
     alert('Demo video yakında eklenecek!')
-    // TODO: Demo video modal'ı veya YouTube link'i
   }
 
   const handleSelectPlan = (planName) => {
     alert(`${planName} seçildi! Ödeme sayfasına yönlendiriliyorsunuz...`)
     // TODO: Ödeme sayfasına yönlendirme veya modal
+  }
+
+  const handleViewDecision = (decisionId, decisionTitle) => {
+    setDecisionModal({
+      isOpen: true,
+      decisionId: decisionId,
+      decisionTitle: decisionTitle
+    })
   }
 
   const handleSmartSearch = async () => {
@@ -364,11 +373,16 @@ function AppContent() {
                         {result.content?.substring(0, 300)}...
                       </p>
                       <div className="mt-4 flex space-x-2">
-                        <Button size="sm" className="btn-secondary">
-                          <FileText className="mr-2 h-4 w-4" />
+                        <Button 
+                          size="sm" 
+                          className="btn-secondary"
+                          onClick={() => handleViewDecision(result.id || `decision-${index}`, result.title || `Karar ${index + 1}`)}
+                        >
+                          <Eye className="mr-2 h-4 w-4" />
                           Detayları Gör
                         </Button>
                         <Button size="sm" className="btn-primary">
+                          <FileText className="mr-2 h-4 w-4" />
                           Dilekçeye Ekle
                         </Button>
                       </div>
@@ -601,6 +615,14 @@ function AppContent() {
       {showUserDashboard && (
         <UserDashboard onClose={() => setShowUserDashboard(false)} />
       )}
+
+      {/* Decision Detail Modal */}
+      <DecisionDetailModal
+        isOpen={decisionModal.isOpen}
+        onClose={() => setDecisionModal({ isOpen: false, decisionId: null, decisionTitle: '' })}
+        decisionId={decisionModal.decisionId}
+        decisionTitle={decisionModal.decisionTitle}
+      />
     </div>
   )
 }

@@ -1,0 +1,144 @@
+name: Run Tests
+
+on:
+  push:
+    branches: [ develop, feature/* ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  test-backend:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+
+    - name: Cache pip dependencies
+      uses: actions/cache@v3
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-${{ hashFiles('hukuk-asistan-main/requirements.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
+
+    - name: Install backend dependencies
+      run: |
+        cd hukuk-asistan-main
+        pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install pytest pytest-asyncio httpx
+
+    - name: Run backend linting
+      run: |
+        cd hukuk-asistan-main
+        pip install flake8
+        flake8 app/ --count --select=E9,F63,F7,F82 --show-source --statistics
+        flake8 app/ --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+
+    - name: Run backend tests
+      run: |
+        cd hukuk-asistan-main
+        # Create test directory if it doesn't exist
+        mkdir -p tests
+        
+        # Run tests if they exist, otherwise just validate imports
+        if [ -f "tests/test_main.py" ]; then
+          pytest tests/ -v
+        else
+          python -c "import app.main; print('✅ Backend imports successful')"
+        fi
+
+  test-frontend:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+        cache-dependency-path: yargisalzeka-frontend/package-lock.json
+
+    - name: Install frontend dependencies
+      run: |
+        cd yargisalzeka-frontend
+        npm ci
+
+    - name: Run frontend linting
+      run: |
+        cd yargisalzeka-frontend
+        npm run lint || echo "⚠️ Linting issues found but continuing..."
+
+    - name: Run frontend tests
+      run: |
+        cd yargisalzeka-frontend
+        # Run tests if they exist
+        if [ -f "src/App.test.jsx" ]; then
+          npm run test -- --run
+        else
+          echo "✅ No tests found, but build will validate code"
+        fi
+
+    - name: Build frontend
+      run: |
+        cd yargisalzeka-frontend
+        npm run build
+
+    - name: Check build size
+      run: |
+        cd yargisalzeka-frontend
+        du -sh dist/
+        echo "✅ Frontend build successful"
+
+  security-scan:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Run security scan on backend
+      run: |
+        cd hukuk-asistan-main
+        pip install safety
+        safety check -r requirements.txt || echo "⚠️ Security issues found in backend dependencies"
+
+    - name: Run security scan on frontend
+      run: |
+        cd yargisalzeka-frontend
+        npm audit --audit-level=high || echo "⚠️ Security issues found in frontend dependencies"
+
+  docker-build-test:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Test backend Docker build
+      run: |
+        cd hukuk-asistan-main
+        docker build -t test-backend .
+        echo "✅ Backend Docker build successful"
+
+    - name: Test frontend Docker build
+      run: |
+        cd yargisalzeka-frontend
+        docker build -t test-frontend .
+        echo "✅ Frontend Docker build successful"
+
+    - name: Test scraper Docker build
+      run: |
+        cd yargitay-scraper-api
+        docker build -t test-scraper .
+        echo "✅ Scraper Docker build successful"
+

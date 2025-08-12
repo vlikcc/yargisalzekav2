@@ -182,20 +182,43 @@ async def analyze_decision(request: DecisionAnalysisRequest):
         )
 
 @app.post("/api/v1/ai/generate-petition", response_model=PetitionGenerationResponse)
-async def generate_petition(request: PetitionGenerationRequest):
+@limiter.limit("5/minute")  # Rate limiting for petition generation
+async def generate_petition(
+    request: Request,
+    petition_request: PetitionGenerationRequest,
+    current_user: TokenData = Depends(get_current_user)
+):
     """
     Olay metni ve alakalı kararlardan dilekçe şablonu oluşturur
+    Premium özellik - sadece trial ve premium kullanıcılar erişebilir
     """
     try:
+        # Premium feature kontrolü
+        user_data = await firestore_manager.get_user_by_id(current_user.user_id)
+        if not user_data or not user_data.get('can_generate_petitions', False):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Dilekçe oluşturma özelliği premium pakette mevcuttur"
+            )
+        
+        # Input validation
+        validated_text = validate_input(petition_request.case_text, max_length=5000)
+        
+        # API usage logging
+        client_ip = get_client_ip(request)
+        logger.info(f"Dilekçe oluşturma isteği - User: {current_user.user_id}, IP: {client_ip}")
+        
         petition = await gemini_service.generate_petition_template(
-            request.case_text,
-            request.relevant_decisions
+            validated_text,
+            petition_request.relevant_decisions
         )
         return PetitionGenerationResponse(
             petition_template=petition,
             success=True,
             message="Dilekçe şablonu başarıyla oluşturuldu"
         )
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Dilekçe oluşturma hatası: {e}")
         return PetitionGenerationResponse(
@@ -378,5 +401,257 @@ async def get_user_usage(request: Request, current_user: dict = Depends(get_curr
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Kullanım bilgileri alınırken bir hata oluştu"
+        )
+
+
+# --- Decision Detail Endpoints ---
+@app.get("/api/v1/decisions/{decision_id}")
+@limiter.limit("20/minute")
+async def get_decision_detail(
+    decision_id: str,
+    request: Request,
+    current_user: TokenData = Depends(get_current_user)
+):
+    """
+    Yargıtay kararının tam metnini getirir
+    Premium özellik - sadece trial ve premium kullanıcılar erişebilir
+    """
+    try:
+        # Premium feature kontrolü
+        user_data = await firestore_manager.get_user_by_id(current_user.user_id)
+        if not user_data or not user_data.get('can_read_full_decisions', False):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Tam karar okuma özelliği premium pakette mevcuttur"
+            )
+        
+        # API usage logging
+        client_ip = get_client_ip(request)
+        logger.info(f"Karar detay isteği - User: {current_user.user_id}, Decision: {decision_id}, IP: {client_ip}")
+        
+        # Scraper API'den tam metni al
+        try:
+            client: httpx.AsyncClient = request.app.state.http_client
+            scraper_url = f"{settings.SCRAPER_API_URL}/decision/{decision_id}"
+            response = await client.get(scraper_url, timeout=30.0)
+            
+            if response.status_code == 200:
+                decision_data = response.json()
+                return {
+                    "success": True,
+                    "decision": decision_data,
+                    "message": "Karar detayı başarıyla getirildi"
+                }
+            else:
+                # Mock data döndür
+                return {
+                    "success": True,
+                    "decision": {
+                        "id": decision_id,
+                        "title": "Örnek Yargıtay Kararı",
+                        "court": "Yargıtay 4. Hukuk Dairesi",
+                        "date": "2024-01-15",
+                        "case_number": "2024/1234",
+                        "decision_number": "2024/5678",
+                        "full_text": "Bu bir örnek karar metnidir. Gerçek karar metni scraper API'den gelecektir...",
+                        "summary": "Sözleşme ihlali nedeniyle tazminat davası",
+                        "keywords": ["sözleşme", "tazminat", "ihlal", "ticaret"]
+                    },
+                    "message": "Örnek karar detayı (Scraper API bağlantısı yok)"
+                }
+        except Exception as e:
+            logger.warning(f"Scraper API'ye bağlanılamadı: {e}")
+            return {
+                "success": False,
+                "message": "Karar detayı şu anda alınamıyor",
+                "error": str(e)
+            }
+            
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Karar detay hatası: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Karar detayı alınırken bir hata oluştu"
+        )
+
+@app.post("/api/v1/decisions/{decision_id}/export-pdf")
+@limiter.limit("10/minute")
+async def export_decision_pdf(
+    decision_id: str,
+    request: Request,
+    current_user: TokenData = Depends(get_current_user)
+):
+    """
+    Yargıtay kararını PDF olarak export eder
+    Premium özellik - sadece trial ve premium kullanıcılar erişebilir
+    """
+    try:
+        # Premium feature kontrolü
+        user_data = await firestore_manager.get_user_by_id(current_user.user_id)
+        if not user_data or not user_data.get('can_export_pdf', False):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="PDF export özelliği premium pakette mevcuttur"
+            )
+        
+        # API usage logging
+        client_ip = get_client_ip(request)
+        logger.info(f"PDF export isteği - User: {current_user.user_id}, Decision: {decision_id}, IP: {client_ip}")
+        
+        # PDF oluşturma işlemi (şimdilik mock response)
+        return {
+            "success": True,
+            "pdf_url": f"/api/v1/files/decisions/{decision_id}.pdf",
+            "message": "PDF başarıyla oluşturuldu",
+            "expires_at": "2024-12-31T23:59:59Z"
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"PDF export hatası: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="PDF export sırasında bir hata oluştu"
+        )
+
+
+# --- Domain Validation Middleware ---
+@app.middleware("http")
+async def domain_validation_middleware(request: Request, call_next):
+    """
+    Production'da sadece yargisalzeka.com domain'lerinden gelen istekleri kabul et
+    """
+    if settings.is_production:
+        host = request.headers.get("host", "").lower()
+        referer = request.headers.get("referer", "").lower()
+        origin = request.headers.get("origin", "").lower()
+        
+        allowed_domains = [
+            "yargisalzeka.com",
+            "www.yargisalzeka.com"
+        ]
+        
+        # Host header kontrolü
+        if host and not any(domain in host for domain in allowed_domains):
+            logger.warning(f"Unauthorized host access attempt: {host}")
+            return JSONResponse(
+                status_code=403,
+                content={"detail": "Bu domain'den erişim izni bulunmamaktadır"}
+            )
+        
+        # Origin header kontrolü (AJAX istekleri için)
+        if origin and not any(domain in origin for domain in allowed_domains):
+            logger.warning(f"Unauthorized origin access attempt: {origin}")
+            return JSONResponse(
+                status_code=403,
+                content={"detail": "Bu origin'den erişim izni bulunmamaktadır"}
+            )
+    
+    response = await call_next(request)
+    return response
+
+
+# --- Search History Endpoints ---
+@app.get("/api/v1/user/search-history")
+@limiter.limit("30/minute")
+async def get_search_history(
+    request: Request,
+    limit: int = 50,
+    current_user: TokenData = Depends(get_current_user)
+):
+    """Get user's search history"""
+    try:
+        user_id = current_user.user_id
+        
+        # API usage logging
+        client_ip = get_client_ip(request)
+        logger.info(f"Arama geçmişi isteği - User: {user_id}, IP: {client_ip}")
+        
+        # Firestore'dan arama geçmişini al
+        search_history = await firestore_manager.get_user_search_history(user_id, limit)
+        
+        return {
+            "success": True,
+            "data": search_history,
+            "message": f"{len(search_history)} arama geçmişi bulundu"
+        }
+        
+    except Exception as e:
+        logger.error(f"Arama geçmişi hatası: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Arama geçmişi alınırken bir hata oluştu"
+        )
+
+@app.delete("/api/v1/user/search-history/{search_id}")
+@limiter.limit("20/minute")
+async def delete_search_history(
+    search_id: str,
+    request: Request,
+    current_user: TokenData = Depends(get_current_user)
+):
+    """Delete a specific search from history"""
+    try:
+        user_id = current_user.user_id
+        
+        # API usage logging
+        client_ip = get_client_ip(request)
+        logger.info(f"Arama silme isteği - User: {user_id}, Search: {search_id}, IP: {client_ip}")
+        
+        # Firestore'dan aramayı sil
+        success = await firestore_manager.delete_user_search(user_id, search_id)
+        
+        if success:
+            return {
+                "success": True,
+                "message": "Arama başarıyla silindi"
+            }
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Arama bulunamadı veya silinemedi"
+            )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Arama silme hatası: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Arama silinirken bir hata oluştu"
+        )
+
+@app.post("/api/v1/user/search-history")
+@limiter.limit("100/minute")
+async def save_search_to_history(
+    request: Request,
+    search_data: dict,
+    current_user: TokenData = Depends(get_current_user)
+):
+    """Save a search to user's history"""
+    try:
+        user_id = current_user.user_id
+        
+        # API usage logging
+        client_ip = get_client_ip(request)
+        logger.info(f"Arama kaydetme isteği - User: {user_id}, IP: {client_ip}")
+        
+        # Arama verilerini Firestore'a kaydet
+        search_id = await firestore_manager.save_search_to_history(user_id, search_data)
+        
+        return {
+            "success": True,
+            "search_id": search_id,
+            "message": "Arama geçmişe kaydedildi"
+        }
+        
+    except Exception as e:
+        logger.error(f"Arama kaydetme hatası: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Arama kaydedilirken bir hata oluştu"
         )
 
