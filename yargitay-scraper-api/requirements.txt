@@ -9,6 +9,7 @@ passlib[bcrypt]
 python-dotenv
 slowapi
 python-multipart
-motor  # Async MongoDB driver
-pymongo  # MongoDB driver
-beanie  # ODM for MongoDB
+google-cloud-firestore  # Google Cloud Firestore
+google-cloud-core      # Google Cloud Core
+beautifulsoup4         # Web scraping
+lxml                   # XML/HTML parsing

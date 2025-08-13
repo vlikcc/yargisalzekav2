@@ -19,7 +19,7 @@ from contextlib import asynccontextmanager
 from . import schemas
 from .config import settings
 from .search_logic import search_single_keyword
-from .database import init_database, close_database, db_manager, YargitayDecision, SearchQuery, UserActivity
+from .firestore_db import init_firestore, close_firestore, firestore_manager
 
 # --- Loglama Yapılandırması ---
 logger.remove()
@@ -37,31 +37,31 @@ search_stats = {"total_searches": 0, "total_results": 0}
 async def lifespan(app: FastAPI):
     logger.info("Yargıtay Scraper API başlatıldı")
     
-    # MongoDB Atlas bağlantısını başlat (hata durumunda fallback)
+    # Firestore bağlantısını başlat (hata durumunda fallback)
     try:
-        db_connected = await init_db()
+        db_connected = init_firestore()
         if db_connected:
-            logger.info("MongoDB Atlas bağlantısı başarılı")
+            logger.info("Firestore bağlantısı başarılı")
         else:
-            logger.warning("MongoDB Atlas bağlantısı başarısız - in-memory cache modunda çalışılacak")
+            logger.warning("Firestore bağlantısı başarısız - in-memory cache modunda çalışılacak")
     except Exception as e:
-        logger.error(f"Database initialization hatası: {e} - fallback mode aktif")
+        logger.error(f"Firestore initialization hatası: {e} - fallback mode aktif")
         db_connected = False
     
     yield
     
-    # MongoDB bağlantısını güvenli şekilde kapat
+    # Firestore bağlantısını güvenli şekilde kapat
     try:
-        await close_database()
-        logger.info("MongoDB bağlantısı kapatıldı")
+        close_firestore()
+        logger.info("Firestore bağlantısı kapatıldı")
     except Exception as e:
-        logger.warning(f"Database kapatma hatası: {e}")
+        logger.warning(f"Firestore kapatma hatası: {e}")
     logger.info("Yargıtay Scraper API kapatıldı")
 
 # --- FastAPI Uygulaması ---
 app = FastAPI(
     title="Yargıtay Scraper API",
-    description="Yargıtay Karar Arama Servisi (MongoDB Atlas)",
+    description="Yargıtay Karar Arama Servisi (Google Cloud Firestore)",
     version="2.1.0",
     lifespan=lifespan
 )
@@ -110,11 +110,30 @@ async def search_yargitay_parallel(
     logger.info(f"Arama başlatıldı: {len(search_request.keywords)} anahtar kelime")
     start_time = time.time()
     
-    # Cache kontrolü
+    # Firestore cache kontrolü
+    cached_result = None
+    if firestore_manager.client:
+        try:
+            cached_result = await firestore_manager.get_search_cache(search_request.keywords)
+            if cached_result:
+                logger.info(f"Firestore cache'den sonuç döndürüldü: {len(cached_result['search_results'])} sonuç")
+                return schemas.SearchResponse(
+                    results=cached_result['search_results'],
+                    success=True,
+                    message=f"Cache'den döndürüldü. {len(cached_result['search_results'])} sonuç bulundu.",
+                    search_details={},
+                    processing_time=cached_result.get('search_duration', 0),
+                    total_keywords=len(search_request.keywords),
+                    unique_results=len(cached_result['search_results'])
+                )
+        except Exception as e:
+            logger.warning(f"Firestore cache kontrolü başarısız: {e}")
+    
+    # In-memory cache kontrolü (fallback)
     cache_key = generate_cache_key(search_request.keywords)
     if cache_key in search_cache:
         cached_result = search_cache[cache_key]
-        logger.info(f"Cache'den sonuç döndürüldü: {len(cached_result['results'])} sonuç")
+        logger.info(f"In-memory cache'den sonuç döndürüldü: {len(cached_result['results'])} sonuç")
         return schemas.SearchResponse(**cached_result)
     
     max_workers = min(len(search_request.keywords), 10)
@@ -180,9 +199,33 @@ async def search_yargitay_parallel(
             "unique_results": len(final_results)
         }
         
-        # Cache'e kaydet (en fazla 100 arama sonucu cache'de tutalım)
+        # Firestore'a cache kaydet
+        if firestore_manager.client and final_results:
+            try:
+                await firestore_manager.save_search_cache(
+                    keywords=search_request.keywords,
+                    results=final_results,
+                    search_duration=elapsed_time
+                )
+                logger.info(f"Arama sonuçları Firestore cache'e kaydedildi")
+            except Exception as e:
+                logger.warning(f"Firestore cache kaydetme başarısız: {e}")
+        
+        # In-memory cache'e kaydet (fallback)
         if len(search_cache) < 100:
             search_cache[cache_key] = response_data
+        
+        # Arama sorgusunu logla
+        if firestore_manager.client:
+            try:
+                await firestore_manager.log_search_query(
+                    query_text=" ".join(search_request.keywords),
+                    keywords=search_request.keywords,
+                    results_count=len(final_results),
+                    execution_time=elapsed_time
+                )
+            except Exception as e:
+                logger.warning(f"Arama sorgusu loglama başarısız: {e}")
         
         return schemas.SearchResponse(**response_data)
         
@@ -201,16 +244,27 @@ async def search_yargitay_parallel(
 @app.get("/stats", tags=["Statistics"])
 async def get_stats():
     """API istatistiklerini döndürür"""
-    return {
+    stats = {
         "search_stats": search_stats,
         "cache_size": len(search_cache),
         "service_info": {
             "name": "Yargıtay Scraper API",
-            "version": "2.0.0",
-            "database": "In-Memory Cache",
+            "version": "2.1.0",
+            "database": "Google Cloud Firestore",
             "rate_limit": settings.USER_RATE_LIMIT
         }
     }
+    
+    # Firestore istatistikleri ekle
+    if firestore_manager.client:
+        try:
+            firestore_stats = await firestore_manager.get_scraper_stats()
+            stats["firestore_stats"] = firestore_stats
+        except Exception as e:
+            logger.warning(f"Firestore istatistikleri alınamadı: {e}")
+            stats["firestore_stats"] = {"error": str(e)}
+    
+    return stats
 
 @app.delete("/cache", tags=["Cache"])
 async def clear_cache():
@@ -218,9 +272,22 @@ async def clear_cache():
     global search_cache
     cache_size = len(search_cache)
     search_cache.clear()
-    logger.info(f"Cache temizlendi: {cache_size} kayıt silindi")
+    
+    # Firestore cache'i de temizle
+    firestore_cleared = 0
+    if firestore_manager.client:
+        try:
+            firestore_cleared = await firestore_manager.cleanup_expired_cache()
+            logger.info(f"Firestore cache temizlendi: {firestore_cleared} kayıt")
+        except Exception as e:
+            logger.warning(f"Firestore cache temizleme başarısız: {e}")
+    
+    logger.info(f"In-memory cache temizlendi: {cache_size} kayıt silindi")
     return {
         "message": f"Cache başarıyla temizlendi",
-        "cleared_entries": cache_size
+        "cleared_entries": {
+            "in_memory": cache_size,
+            "firestore": firestore_cleared
+        }
     }
 

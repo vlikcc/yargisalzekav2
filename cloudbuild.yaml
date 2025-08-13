@@ -59,7 +59,7 @@ steps:
       '--region', 'europe-west1',
       '--platform', 'managed',
       '--allow-unauthenticated',
-      '--set-secrets', 'MONGODB_CONNECTION_STRING=mongodb-connection:latest',
+      '--set-secrets', 'GCP_PROJECT_ID=gcp-project-id:latest',
       '--memory', '2Gi',
       '--cpu', '2',
       '--max-instances', '3',

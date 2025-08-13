@@ -27,9 +27,6 @@ Değer: Google Gemini API anahtarınız
 
 JWT_SECRET_KEY
 Değer: Güçlü bir secret key (örn: openssl rand -base64 32)
-
-MONGODB_CONNECTION_STRING
-Değer: MongoDB Atlas connection string'iniz
 ```
 
 ## 🔧 Google Cloud Service Account Oluşturma
@@ -99,9 +96,6 @@ openssl rand -base64 32 | gcloud secrets create jwt-secret-key --data-file=-
 
 # GCP Project ID
 echo -n "yargisalzeka-prod" | gcloud secrets create gcp-project-id --data-file=-
-
-# MongoDB Connection String
-echo -n "YOUR_MONGODB_CONNECTION_STRING" | gcloud secrets create mongodb-connection --data-file=-
 ```
 
 ### 2. Secret Access Permissions
@@ -116,10 +110,6 @@ gcloud secrets add-iam-policy-binding jwt-secret-key \
     --role="roles/secretmanager.secretAccessor"
 
 gcloud secrets add-iam-policy-binding gcp-project-id \
-    --member="serviceAccount:github-actions@yargisalzeka-prod.iam.gserviceaccount.com" \
-    --role="roles/secretmanager.secretAccessor"
-
-gcloud secrets add-iam-policy-binding mongodb-connection \
     --member="serviceAccount:github-actions@yargisalzeka-prod.iam.gserviceaccount.com" \
     --role="roles/secretmanager.secretAccessor"
 ```
