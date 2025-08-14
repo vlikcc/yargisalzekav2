@@ -8,7 +8,7 @@ import { Brain, Search, FileText, Zap, CheckCircle, Star, Clock, Users, Scale, C
 import AuthModal from './components/AuthModal.jsx'
 import UserDashboard from './components/UserDashboard.jsx'
 import DecisionDetailModal from './components/DecisionDetailModal.jsx'
-import { AuthProvider, useAuth } from './hooks/useAuth.js'
+import { AuthProvider, useAuth } from './hooks/useAuth.jsx'
 import { apiService, ApiError } from './services/api.js'
 import './App.css'
 
@@ -152,7 +152,7 @@ function AppContent() {
           <div className="flex justify-between items-center py-4">
             <div className="flex items-center space-x-4">
               <img 
-                src="/src/assets/yargisalzeka-logo.png" 
+                src="/yargisalzeka-logo.png" 
                 alt="Yargısal Zeka Logo" 
                 className="h-12 w-auto"
               />
@@ -453,7 +453,7 @@ function AppContent() {
               <Card className="feature-card text-center">
                 <CardHeader>
                   <img 
-                    src="/src/assets/ai-brain-analysis.png" 
+                    src="/ai-brain-analysis.png" 
                     alt="AI Analiz" 
                     className="w-20 h-20 mx-auto mb-4 rounded-lg"
                   />
@@ -469,7 +469,7 @@ function AppContent() {
               <Card className="feature-card text-center">
                 <CardHeader>
                   <img 
-                    src="/src/assets/parallel-search-tech.png" 
+                    src="/parallel-search-tech.png" 
                     alt="Paralel Arama" 
                     className="w-20 h-20 mx-auto mb-4 rounded-lg"
                   />
@@ -485,7 +485,7 @@ function AppContent() {
               <Card className="feature-card text-center">
                 <CardHeader>
                   <img 
-                    src="/src/assets/smart-scoring-system.png" 
+                    src="/smart-scoring-system.png" 
                     alt="Akıllı Puanlama" 
                     className="w-20 h-20 mx-auto mb-4 rounded-lg"
                   />

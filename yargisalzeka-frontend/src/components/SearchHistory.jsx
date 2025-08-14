@@ -13,7 +13,7 @@ import {
   RefreshCw,
   AlertCircle
 } from 'lucide-react'
-import { useAuth } from '../hooks/useAuth.js'
+import { useAuth } from '../hooks/useAuth.jsx'
 import { apiService, ApiError } from '../services/api.js'
 
 const SearchHistory = ({ onSelectSearch }) => {

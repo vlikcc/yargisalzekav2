@@ -5,8 +5,10 @@ import { Input } from '@/components/ui/input.jsx'
 import { Label } from '@/components/ui/label.jsx'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs.jsx'
 import { X, Eye, EyeOff, Mail, Lock, User, CheckCircle, AlertCircle } from 'lucide-react'
+import { useAuth } from '@/hooks/useAuth.jsx'
 
 const AuthModal = ({ isOpen, onClose, defaultTab = 'login' }) => {
+  const { login } = useAuth()
   const [activeTab, setActiveTab] = useState(defaultTab)
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
@@ -79,18 +81,34 @@ const AuthModal = ({ isOpen, onClose, defaultTab = 'login' }) => {
 
       const data = await response.json()
 
-      if (response.ok && data.status === 'success') {
-        // JWT token'ı localStorage'a kaydet
-        localStorage.setItem('auth_token', data.access_token)
-        localStorage.setItem('user_data', JSON.stringify(data.user_data))
-        
-        setMessage({ type: 'success', text: 'Giriş başarılı! Yönlendiriliyorsunuz...' })
-        
-        // 2 saniye sonra modal'ı kapat ve sayfayı yenile
-        setTimeout(() => {
-          handleClose()
-          window.location.reload()
-        }, 2000)
+      if (response.ok && data.access_token) {
+        try {
+          // JWT token'ını decode et
+          const tokenParts = data.access_token.split('.')
+          const payload = JSON.parse(atob(tokenParts[1]))
+          
+          // Kullanıcı bilgilerini oluştur
+          const userData = {
+            email: payload.sub,
+            user_id: payload.user_id,
+            subscription_plan: payload.subscription_plan,
+            full_name: payload.sub.split('@')[0] // Email'den isim çıkar (geçici)
+          }
+          
+          // useAuth hook'unu kullanarak login yap
+          login(userData, data.access_token)
+          localStorage.setItem('refresh_token', data.refresh_token)
+          
+          setMessage({ type: 'success', text: 'Giriş başarılı! Yönlendiriliyorsunuz...' })
+          
+          // 1 saniye sonra modal'ı kapat (sayfa yenilemeye gerek yok)
+          setTimeout(() => {
+            handleClose()
+          }, 1000)
+        } catch (error) {
+          console.error('Token decode error:', error)
+          setMessage({ type: 'error', text: 'Giriş işlemi sırasında bir hata oluştu.' })
+        }
       } else {
         setMessage({ type: 'error', text: data.detail || 'Giriş yapılırken bir hata oluştu.' })
       }

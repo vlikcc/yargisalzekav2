@@ -4,22 +4,25 @@ FROM node:18-alpine as build
 # Set working directory
 WORKDIR /app
 
-# Copy package files
-COPY package*.json ./
+# Install pnpm globally
+RUN npm install -g pnpm
 
-# Install dependencies
-RUN npm install --only=production
+# Copy package files for dependency installation
+COPY package.json pnpm-lock.yaml ./
 
-# Copy source code
+# Install all dependencies (including dev dependencies needed for build)
+RUN pnpm install --frozen-lockfile
+
+# Copy all source code
 COPY . .
 
-# Build the app
-RUN npm run build
+# Build the application
+RUN pnpm run build
 
 # Production stage with nginx
 FROM nginx:alpine
 
-# Copy built app from build stage
+# Copy the built application from build stage
 COPY --from=build /app/dist /usr/share/nginx/html
 
 # Copy nginx configuration
@@ -30,8 +33,7 @@ EXPOSE 80
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost/ || exit 1
+    CMD wget --no-verbose --tries=1 --spider http://localhost/ || exit 1
 
 # Start nginx
 CMD ["nginx", "-g", "daemon off;"]
-

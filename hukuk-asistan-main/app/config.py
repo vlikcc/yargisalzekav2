@@ -8,7 +8,7 @@ class Settings(BaseSettings):
     GEMINI_API_KEY: str
     
     # Yargıtay Scraper API ayarları
-    SCRAPER_API_URL: str = "http://localhost:8001"
+    SCRAPER_API_URL: str = "https://scraper.yargisalzeka.com"
     
     # Genel ayarlar
     LOG_LEVEL: str = "INFO"
@@ -53,10 +53,11 @@ class Settings(BaseSettings):
     @property
     def cors_origins(self) -> List[str]:
         if self.is_production:
-            # Production'da sadece yargisalzeka.com domain'lerini kabul et
+            # Production'da yargisalzeka.com domain'leri ve Google Cloud Run URL'lerini kabul et
             return [
                 "https://yargisalzeka.com",
-                "https://www.yargisalzeka.com"
+                "https://www.yargisalzeka.com",
+                "https://yargisalzeka-frontend-833426253769.europe-west1.run.app"
             ]
         return self.CORS_ORIGINS
 

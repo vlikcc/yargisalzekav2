@@ -10,6 +10,7 @@ class Settings(BaseSettings):
     MAX_PAGES_TO_SEARCH: int = 5
     TARGET_RESULTS_PER_KEYWORD: int = 3
     SELENIUM_GRID_URL: str = "http://selenium-hub:4444/wd/hub"
+    USE_LOCAL_CHROME: bool = True  # Google Cloud için local Chrome kullan
 
 # Ayarları import edilebilir bir nesne olarak oluştur
 settings = Settings()

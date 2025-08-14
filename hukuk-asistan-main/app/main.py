@@ -2,6 +2,7 @@ import sys
 import httpx
 from fastapi import FastAPI, Request, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 
@@ -117,6 +118,14 @@ async def root():
         "message": "Yargısal Zeka API'sine hoş geldiniz",
         "version": settings.API_VERSION,
         "docs": "/docs"
+    }
+
+@app.get("/debug/scraper-url")
+async def debug_scraper_url():
+    """Debug: Scraper API URL'ini göster"""
+    return {
+        "scraper_url": settings.SCRAPER_API_URL,
+        "full_search_url": f"{settings.SCRAPER_API_URL}/search"
     }
 
 # --- AI Mikroservisleri ---
@@ -248,6 +257,8 @@ async def smart_search(request: Request, search_request: SmartSearchRequest):
             search_payload = {"keywords": keywords, "max_results": search_request.max_results}
             
             scraper_url = f"{settings.SCRAPER_API_URL}/search"
+            logger.info(f"Scraper API URL: {scraper_url}")
+            logger.info(f"Search payload: {search_payload}")
             response = await client.post(scraper_url, json=search_payload, timeout=30.0)
             
             if response.status_code == 200:
@@ -255,6 +266,7 @@ async def smart_search(request: Request, search_request: SmartSearchRequest):
                 search_results = search_data.get("results", [])
             else:
                 # Scraper API çalışmıyorsa mock data kullan
+                logger.error(f"Scraper API error: Status {response.status_code}, Response: {response.text}")
                 search_results = _get_mock_search_results()
         except Exception as e:
             logger.warning(f"Scraper API'ye bağlanılamadı, mock data kullanılıyor: {e}")
@@ -375,12 +387,12 @@ def _get_mock_search_results():
 # --- User Usage Endpoints ---
 @app.get("/api/v1/user/usage")
 @limiter.limit("30/minute")
-async def get_user_usage(request: Request, current_user: dict = Depends(get_current_user)):
+async def get_user_usage(request: Request, current_user: TokenData = Depends(get_current_user)):
     """Get current user's usage statistics"""
     try:
         from .usage_middleware import get_user_usage_info
         
-        user_id = current_user.get('id')
+        user_id = current_user.user_id
         if not user_id:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -531,7 +543,9 @@ async def domain_validation_middleware(request: Request, call_next):
         
         allowed_domains = [
             "yargisalzeka.com",
-            "www.yargisalzeka.com"
+            "www.yargisalzeka.com",
+            "yargisalzeka-backend-833426253769.europe-west1.run.app",  # Google Cloud Run hostname
+            "yargisalzeka-frontend-833426253769.europe-west1.run.app"  # Frontend hostname
         ]
         
         # Host header kontrolü

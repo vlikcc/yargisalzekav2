@@ -147,12 +147,36 @@ def search_single_keyword(keyword: str, thread_id: int) -> tuple:
         chrome_options.add_argument("--headless")
         chrome_options.add_argument("--no-sandbox")
         chrome_options.add_argument("--disable-dev-shm-usage")
+        chrome_options.add_argument("--disable-gpu")
+        chrome_options.add_argument("--disable-extensions")
+        chrome_options.add_argument("--disable-plugins")
+        chrome_options.add_argument("--disable-images")
         chrome_options.add_argument("--window-size=1920,1080")
         
-        driver = webdriver.Remote(
-            command_executor=settings.SELENIUM_GRID_URL,
-            options=chrome_options
-        )
+        # Google Cloud için yerel Chromium kullan
+        if settings.USE_LOCAL_CHROME:
+            try:
+                from selenium.webdriver.chrome.service import Service
+                
+                # Chromium binary path
+                chrome_options.binary_location = "/usr/bin/chromium"
+                
+                # ChromeDriver service (sistem paketinden)
+                service = Service("/usr/bin/chromedriver")
+                driver = webdriver.Chrome(service=service, options=chrome_options)
+                logger.info(f"[{thread_name}] Yerel Chromium WebDriver başlatıldı")
+            except Exception as e:
+                logger.warning(f"[{thread_name}] Yerel Chromium başlatılamadı, Remote Grid deneniyor: {e}")
+                # Fallback to remote grid
+                driver = webdriver.Remote(
+                    command_executor=settings.SELENIUM_GRID_URL,
+                    options=chrome_options
+                )
+        else:
+            driver = webdriver.Remote(
+                command_executor=settings.SELENIUM_GRID_URL,
+                options=chrome_options
+            )
         wait = WebDriverWait(driver, 20)
 
         results = []
